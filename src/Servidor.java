@@ -5,7 +5,7 @@ import java.util.HashMap;
 public class Servidor extends Thread {
 
     private DatagramSocket socket;
-    private HashMap<SocketAddress, Transferencia> tabela;
+    //private HashMap<SocketAddress, Transferencia> tabela;
     //Uma tabela de estado, que para cada transferência tem alguma informação útil sobre a
     // transferência e o estado da mesma, como por exemplo, ficheiro de dados,
     // origem, destino, porta de origem, porta de destino, etc.
@@ -38,8 +38,6 @@ public class Servidor extends Thread {
                 }
                 else if(p.isSYN()) {
                     // começar handshake
-
-
                     System.out.println(seq);
                     // enviar SYN + ACK
 
@@ -55,9 +53,7 @@ public class Servidor extends Thread {
                 } else {
                     break;
                 }
-
-
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -77,6 +73,6 @@ public class Servidor extends Thread {
 
     public static void main(String[] args) {
         Servidor t = new Servidor();
-        t.run();
+        t.start();
     }
 }
