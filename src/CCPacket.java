@@ -7,6 +7,8 @@ public class CCPacket {
     private InetAddress address;
     private int port;
     private int sequence;
+    private int size;
+    private byte flags; //1- syn 4-
 
     public CCPacket(DatagramPacket packet) {
         InetAddress address = packet.getAddress();
