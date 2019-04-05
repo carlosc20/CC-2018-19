@@ -13,7 +13,12 @@ public class AgenteUDP {
         try {
             socket = new DatagramSocket(7777);
         } catch (SocketException e) {
-            e.printStackTrace();
+            try {
+                socket = new DatagramSocket(8888);
+            } catch (SocketException e1) {
+                e1.printStackTrace();
+            }
+            //e.printStackTrace();
         }
     }
 

@@ -28,13 +28,16 @@ public class CCPacket {
 
 
     public DatagramPacket toDatagramPacket() {
-        ByteBuffer b = ByteBuffer.allocate(4);
+        int sizeb= 1+8+size;
+        ByteBuffer b = ByteBuffer.allocate(sizeb);
         b.put(flags);
         b.putInt(size);
         b.putInt(sequence);
-        b.put(data);
+        if (size>0)
+            b.put(data);
         //TODO meter checksum
         byte[] buf = b.array();
+        System.out.println("Buffer size "+buf.length);
         return new DatagramPacket(buf, buf.length, address, port);
     }
 
@@ -53,6 +56,11 @@ public class CCPacket {
         if (isAck)f |= 4;
         p.setFlags(f);
         return p;
+    }
+
+    public void setDestination(InetAddress address, int port) {
+        address = address;
+        port = port;
     }
 
     private void setSequence(int seq) {
