@@ -35,7 +35,7 @@ public class TransfereCC extends Thread{
         if(p.isSYN() && acceptingConnections){
             if(!conections.containsKey(p.getAddress())){
                 rl.lock();
-                pendingConnection = pendingConnection;
+                pendingConnection = p;
                 acceptingConnections = false;
                 waitingConection.signal();
                 rl.unlock();
@@ -43,36 +43,60 @@ public class TransfereCC extends Thread{
             return;
         }
         //Coloca-o em buffer se for bom e tiver conexao.
-        if (conections.containsKey(p.getAddress())){
-            conections.get(p.getAddress()).putPack(p);
-        }
+        try{
 
+            if (conections.containsKey(p.getAddress())){
+                conections.get(p.getAddress()).putPack(p);
+            }
+        }catch (NullPointerException e){
+
+        }
+    }
+
+    public TransfereCC(){
+        udp = new AgenteUDP();
+        this.start();
+    }
+
+    public void run(){
+        while (true)
+            collect();
     }
 
     public void get(InetAddress i , String x){
+        //Cria Conexão
+
+        //Faz Pedido
+
+        //Manda Cenas
 
     }
 
-    public void put(InetAddress i , String x){
+    public void put(InetAddress i , String x, String fich){
 
+    }
+
+    void attendConections(){
+        CCConnection p = accept();
     }
 
     public CCConnection accept(){
         try {
             rl.lock();
             acceptingConnections = true;
-            CCConnection c;
-            while (acceptingConnections == true){
+            CCConnection c = null;
+            while (acceptingConnections){
                 try {
-                    waitingConection.wait();
+                    waitingConection.await();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
                 if (acceptingConnections == false){
                     //se num conexões maior que 1 meter numero de waiters
-                    c = new CCConnection(pendingConnection);
+                    System.out.println("OMG IM OUT");
+                    c = new CCConnection(pendingConnection,udp);
                     try {
-                        c.testConnected();
+                        c.startHandshake();
                     } catch (ConnectionLostException e) {
                         acceptingConnections = true;
                         e.printStackTrace();
@@ -87,4 +111,8 @@ public class TransfereCC extends Thread{
         }
     }
 
+    public static void main(String args[]){
+        TransfereCC tcc = new TransfereCC();
+        CCConnection con = tcc.accept();
+    }
 }

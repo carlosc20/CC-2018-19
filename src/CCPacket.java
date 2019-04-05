@@ -6,9 +6,12 @@ public class CCPacket {
 
     private InetAddress address;
     private int port;
-    private int sequence;
+    //Por esta ordem
+    private byte flags; //1- syn 2- fin 4- ack 8-hellopacket
     private int size;
-    private byte flags; //1- syn 4-
+    private int sequence;
+    private int checksum;//size will change
+    private byte data[];
 
     public CCPacket(DatagramPacket packet) {
         InetAddress address = packet.getAddress();
@@ -21,6 +24,10 @@ public class CCPacket {
         this.address = address;
         this.port = port;
         this.sequence = sequence;
+    }
+    public CCPacket getAckPacket(){
+       // CCPacket acker = new CCPacket();
+        return null;
     }
 
     public InetAddress getAddress() {
@@ -44,10 +51,20 @@ public class CCPacket {
     }
 
     public boolean isSYN() {
-        return true;
+        int flag = flags;
+        int syn = flag & 1;
+        return syn > 0;
+    }
+
+    public boolean isACK() {
+        int flag = flags;
+        int ack = flag & 4;
+        return ack > 0;
     }
 
     public boolean isFIN() {
-        return false;
+        int flag = flags;
+        int fin = flag & 2;
+        return fin > 0;
     }
 }
