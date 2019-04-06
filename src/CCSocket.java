@@ -16,11 +16,13 @@ public class CCSocket implements Runnable {
 
 
 
-    public CCSocket (CCDataReciever dReciever){
+    public CCSocket (InetAddress address, int port, CCDataReciever dReciever){
+        this.address = address;
+        this.port = port;
         dataReciever = dReciever;
     }
 
-    public CCSocket(int port) {
+    public CCSocket(InetAddress address, int port) {
         this.address = address;
         this.port = port;
         new CCDataReciever();

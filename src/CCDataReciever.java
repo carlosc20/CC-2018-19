@@ -38,7 +38,7 @@ public class CCDataReciever implements Runnable{
         // TODO: checksum
 
         if(p.isSYN() && !this.connections.containsKey(p.getAddress()) && isAcceptingConnections){
-            CCSocket n = new CCSocket(this);
+            CCSocket n = new CCSocket(p.getAddress(),p.getPort(),this);
             this.connections.put(p.getAddress(),n);
             pending.add(n);
         }
