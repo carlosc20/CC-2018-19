@@ -5,26 +5,27 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class TransfereCC extends Thread{
+public class TransfereCC extends Thread {
 
-
-
-    HashMap <InetAddress,CCConnection> connections = new HashMap<>();
-    boolean acceptingConnections = false;
-    CCPacket pendingConnection;
-    ReentrantLock rl = new ReentrantLock();
-    Condition waitingConection = rl.newCondition();
-    LinkedBlockingQueue<CCConnection> pending = new LinkedBlockingQueue<>();
-    boolean isAcceptingConnections = false;
+    private HashMap <InetAddress,CCConnection> connections = new HashMap<>();
+    private LinkedBlockingQueue<CCConnection> pending = new LinkedBlockingQueue<>();
+    private boolean isAcceptingConnections = false;
     private AgenteUDP udp = new AgenteUDP(7777);
 
-    //TODO COLLECT MANTEM-SE
-    private void collect(){
-        try {
-            CCPacket p = udp.receivePacket();
-            processPacket(p);
-        } catch (IOException e) {
-            e.printStackTrace();
+
+
+    public TransfereCC(){
+        this.start();
+    }
+
+    public void run(){
+        while (true) {
+            try {
+                CCPacket p = udp.receivePacket();
+                processPacket(p);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -41,15 +42,6 @@ public class TransfereCC extends Thread{
         if (this.connections.containsKey(p.getAddress())){
             this.connections.get(p.getAddress()).putPack(p);
         }
-    }
-
-    public TransfereCC(){
-        this.start();
-    }
-
-    public void run(){
-        while (true)
-            collect();
     }
 
     public void get(InetAddress i , String x){
@@ -77,7 +69,7 @@ public class TransfereCC extends Thread{
 
     //TODO TIRAR ACCEPT
     public CCConnection accept(){
-        acceptingConnections = true;
+        isAcceptingConnections = true;
         boolean recieved = false;
         CCConnection c = null;
         while (!recieved){
@@ -89,11 +81,11 @@ public class TransfereCC extends Thread{
 
             }
         }
-        acceptingConnections = false;
+        isAcceptingConnections = false;
         return c;
     }
 
-    public static void main(String args[]){
+    public static void main(String[] args){
         TransfereCC tcc = new TransfereCC();
         CCConnection con = tcc.accept();
     }
