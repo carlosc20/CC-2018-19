@@ -12,7 +12,7 @@ public class TransfereCC extends Thread{
 
     AgenteUDP udp;
 
-    HashMap<InetAddress,CCConnection> conections;
+    HashMap<InetAddress,CCConnection> conections = new HashMap<>();
     boolean acceptingConnections = false;
     CCPacket pendingConnection;
     ReentrantLock rl = new ReentrantLock();

@@ -15,8 +15,9 @@ public class CCPacket {
     public static int headersize = 9;
 
     public CCPacket(DatagramPacket packet) {
-        InetAddress address = packet.getAddress();
-        int port = packet.getPort();
+        address = packet.getAddress();
+        port = packet.getPort();
+        System.out.println(address+" --- "+port);
         ByteBuffer wrapped = ByteBuffer.wrap(packet.getData());
         flags = wrapped.get();
         size = wrapped.getInt();
