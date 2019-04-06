@@ -14,7 +14,7 @@ public class CCPacket {
     private byte data[];
     public static int headersize = 9;
 
-    public CCPacket(DatagramPacket packet) {
+    public CCPacket(DatagramPacket packet) throws InvalidPacketException {
         address = packet.getAddress();
         port = packet.getPort();
         System.out.println(address+" --- "+port);
@@ -22,6 +22,8 @@ public class CCPacket {
         flags = wrapped.get();
         size = wrapped.getInt();
         data = new byte[size];
+        if (size+headersize != packet.getData().length)
+            throw new InvalidPacketException();
         sequence = wrapped.getInt();
         //TODO ler checksum, ajustar data place
         wrapped.get(data);
