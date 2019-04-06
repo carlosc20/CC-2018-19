@@ -7,7 +7,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class TransfereCC extends Thread{
 
-    private static AgenteUDP udp = new AgenteUDP();
+
 
     HashMap <InetAddress,CCConnection> connections = new HashMap<>();
     boolean acceptingConnections = false;
@@ -16,6 +16,7 @@ public class TransfereCC extends Thread{
     Condition waitingConection = rl.newCondition();
     LinkedBlockingQueue<CCConnection> pending = new LinkedBlockingQueue<>();
     boolean isAcceptingConnections = false;
+    private AgenteUDP udp = new AgenteUDP(7777);
 
     //TODO COLLECT MANTEM-SE
     private void collect(){
@@ -43,7 +44,6 @@ public class TransfereCC extends Thread{
     }
 
     public TransfereCC(){
-        udp = new AgenteUDP();
         this.start();
     }
 
@@ -53,26 +53,44 @@ public class TransfereCC extends Thread{
     }
 
     public void get(InetAddress i , String x){
-        //Cria Conexão
 
-        //Faz Pedido
-
-        //Manda Cenas
 
     }
 
     public void put(InetAddress i , String x, String fich){
-
+        //Put servers no ficheiro
     }
 
+    //SERVERSTUFF
     void attendConections(){
+        //
         CCConnection p = accept();
+        //Cria server
+        //start server
+        //recebe pedido de ficheiro
+        CCPacket pacote = p.recieve();
+        //processa nome de ficheiro
+        //String nomefich = new String(pacote.getData());
+        //manda o ficheiro
+        //p.send(ficheiro)
     }
 
     //TODO TIRAR ACCEPT
     public CCConnection accept(){
         acceptingConnections = true;
-        return null;
+        boolean recieved = false;
+        CCConnection c = null;
+        while (!recieved){
+            try {
+                c = pending.take();
+                c.startHandshake();
+                recieved = true;
+            } catch (InterruptedException | ConnectionLostException e) {
+
+            }
+        }
+        acceptingConnections = false;
+        return c;
     }
 
     public static void main(String args[]){
