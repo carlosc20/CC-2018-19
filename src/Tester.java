@@ -18,9 +18,7 @@ public class Tester {
         InetAddress i = null;
         try {
             i = InetAddress.getLocalHost();
-            System.out.println(InetAddress.getByName("1.1.1.1").toString());
             c.setDestination(InetAddress.getLocalHost(), 7777);
-            c.putData("BANANA".getBytes());
             udp.sendPacket(c);
         } catch (UnknownHostException e) {
             e.printStackTrace();

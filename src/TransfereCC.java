@@ -2,47 +2,19 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class TransfereCC extends Thread {
 
-    private HashMap <InetAddress,CCConnection> connections = new HashMap<>();
-    private LinkedBlockingQueue<CCConnection> pending = new LinkedBlockingQueue<>();
-    private boolean isAcceptingConnections = false;
-    private AgenteUDP udp = new AgenteUDP(7777);
 
+    CCServerSocket serverSocket;
 
 
     public TransfereCC(){
-        this.start();
+        //ServerSocket
+        serverSocket = new CCServerSocket(7777);
     }
 
-    public void run(){
-        while (true) {
-            try {
-                CCPacket p = udp.receivePacket();
-                processPacket(p);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 
-    //TODO PROCESSPACKET MUDA
-    private void processPacket(CCPacket p) {
-        // TODO: checksum
-
-        if(p.isSYN() && !this.connections.containsKey(p.getAddress()) && isAcceptingConnections){
-            CCConnection n = new CCConnection(p.getAddress(),p.getPort(),udp);
-            this.connections.put(p.getAddress(),n);
-            pending.add(n);
-        }
-
-        if (this.connections.containsKey(p.getAddress())){
-            this.connections.get(p.getAddress()).putPack(p);
-        }
-    }
 
     public void get(InetAddress i , String x){
 
@@ -56,37 +28,26 @@ public class TransfereCC extends Thread {
     //SERVERSTUFF
     void attendConections(){
         //
-        CCConnection p = accept();
+        //CCSocket p = accept();
         //Cria server
         //start server
         //recebe pedido de ficheiro
-        CCPacket pacote = p.recieve();
+        //CCPacket pacote = p.recieve();
         //processa nome de ficheiro
         //String nomefich = new String(pacote.getData());
         //manda o ficheiro
         //p.send(ficheiro)
     }
 
-    //TODO TIRAR ACCEPT
-    public CCConnection accept(){
-        isAcceptingConnections = true;
-        boolean recieved = false;
-        CCConnection c = null;
-        while (!recieved){
-            try {
-                c = pending.take();
-                c.startHandshake();
-                recieved = true;
-            } catch (InterruptedException | ConnectionLostException e) {
 
-            }
-        }
-        isAcceptingConnections = false;
-        return c;
-    }
+
 
     public static void main(String[] args){
         TransfereCC tcc = new TransfereCC();
-        CCConnection con = tcc.accept();
+        CCSocket con = tcc.accept();
+    }
+
+    private CCSocket accept() {
+        return serverSocket.accept();
     }
 }

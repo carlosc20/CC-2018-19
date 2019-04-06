@@ -2,9 +2,11 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class CCConnection implements Runnable {
+public class CCSocket implements Runnable {
 
-    HashMap<Integer,CCPacket> packetBuffer;
+    CCDataReciever dataReciever;
+
+    HashMap<Integer,CCPacket> packetBuffer = new HashMap<>();
     private InetAddress address;
     int port;
     int lastrecieved = 0;
@@ -13,10 +15,15 @@ public class CCConnection implements Runnable {
     private AgenteUDP agente; //sender
 
 
-    public CCConnection(InetAddress address, int port, AgenteUDP udp) {
+
+    public CCSocket (CCDataReciever dReciever){
+        dataReciever = dReciever;
+    }
+
+    public CCSocket(int port) {
         this.address = address;
         this.port = port;
-        this.agente = udp;
+        new CCDataReciever();
     }
 
     @Override

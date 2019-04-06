@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Arrays;
 
@@ -19,12 +20,12 @@ public class AgenteUDP {
     }
     public AgenteUDP() {
         try {
-            socket = new DatagramSocket(7777);
+            socket = new DatagramSocket();
         } catch (SocketException e) {
-
             //e.printStackTrace();
         }
     }
+
 
     public CCPacket receivePacket() throws IOException {
         byte[] buf = new byte[MTU];
