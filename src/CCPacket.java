@@ -13,6 +13,7 @@ public class CCPacket {
     //TODO private int checksum;
     private byte data[];
     public static int headersize = 9;
+    public static int maxsize = 256;
 
     public CCPacket(DatagramPacket packet) throws InvalidPacketException {
         address = packet.getAddress();
@@ -21,14 +22,14 @@ public class CCPacket {
         ByteBuffer wrapped = ByteBuffer.wrap(packet.getData());
         flags = wrapped.get();
         size = wrapped.getInt();
-        data = new byte[size];
-        if (size+headersize != packet.getData().length)
-            throw new InvalidPacketException();
         sequence = wrapped.getInt();
+        //TODO improve validação
+        if (size > maxsize || size < 0 || sequence < 0 || (flags | 7) != 7)
+            throw new InvalidPacketException();
+        data = new byte[size];
         //TODO ler checksum, ajustar data place
         wrapped.get(data);
     }
-
 
 
     public DatagramPacket toDatagramPacket() {

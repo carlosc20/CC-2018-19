@@ -35,11 +35,12 @@ public class AgenteUDP {
             try {
                 socket.receive(packet);
                 c = new CCPacket(packet);
-                System.out.println("Recieved");
                 recieved =true;
             } catch (InvalidPacketException e) {
+                System.out.println("ERROR");
             }
         }
+        System.out.println("Recieved");
         return c;
     }
 
