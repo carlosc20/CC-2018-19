@@ -10,14 +10,68 @@ public class CCPacket {
     private byte flags; //1- syn 2- fin 4- ack 8-hellopacket
     private int size;
     private int sequence;
-    private int checksum;//size will change
+    //TODO private int checksum;
     private byte data[];
+    public static int headersize = 9;
 
     public CCPacket(DatagramPacket packet) {
-        InetAddress address = packet.getAddress();
-        int port = packet.getPort();
+        address = packet.getAddress();
+        port = packet.getPort();
+        System.out.println(address+" --- "+port);
         ByteBuffer wrapped = ByteBuffer.wrap(packet.getData());
-        wrapped.getInt(0);
+        flags = wrapped.get();
+        size = wrapped.getInt();
+        data = new byte[size];
+        sequence = wrapped.getInt();
+        //TODO ler checksum, ajustar data place
+        wrapped.get(data);
+    }
+
+
+
+    public DatagramPacket toDatagramPacket() {
+        int sizeb= headersize+size;
+        ByteBuffer b = ByteBuffer.allocate(sizeb);
+        b.put(flags);
+        b.putInt(size);
+        b.putInt(sequence);
+        if (size>0)
+            b.put(data);
+        //TODO meter checksum
+        byte[] buf = b.array();
+        System.out.println(flags+" -- "+size+" -- "+sequence+" -- "+(size+headersize)+"--");
+
+        return new DatagramPacket(buf, buf.length, address, port);
+    }
+
+    public CCPacket() {
+        flags = 0;
+        size = 0;
+        sequence = 0;
+    }
+
+    public static CCPacket createQuickPack(int sequence, boolean isSyn, boolean isAck, boolean isFin){
+        CCPacket p = new CCPacket();
+        p.setSequence(sequence);
+        byte f = 0;
+        if (isSyn)f |= 1;
+        if (isFin)f |= 2;
+        if (isAck)f |= 4;
+        p.setFlags(f);
+        return p;
+    }
+
+    public void setDestination(InetAddress ad, int p) {
+        address = ad;
+        port = p;
+    }
+
+    private void setSequence(int seq) {
+        sequence = seq;
+    }
+
+    private void setFlags(byte i) {
+        flags = i;
     }
 
     public CCPacket(InetAddress address, int port, int sequence) {
@@ -25,6 +79,8 @@ public class CCPacket {
         this.port = port;
         this.sequence = sequence;
     }
+
+
     public CCPacket getAckPacket(){
        // CCPacket acker = new CCPacket();
         return null;
@@ -42,13 +98,7 @@ public class CCPacket {
         return sequence;
     }
 
-    public DatagramPacket toDatagramPacket() {
 
-        ByteBuffer b = ByteBuffer.allocate(4);
-        b.putInt(sequence);
-        byte[] buf = b.array();
-        return new DatagramPacket(buf, buf.length, address, port);
-    }
 
     public boolean isSYN() {
         int flag = flags;
@@ -66,5 +116,21 @@ public class CCPacket {
         int flag = flags;
         int fin = flag & 2;
         return fin > 0;
+    }
+
+    public static void main(String[]args){
+        CCPacket c = CCPacket.createQuickPack(200,true,true,false);
+        if (c.isSYN())
+            System.out.println("SIN");
+        if (c.isFIN())
+            System.out.println("FIN");
+        if (c.isACK())
+            System.out.println("ACK");
+        System.out.println(c.getSequence());
+    }
+
+    public void putData(byte[] bytes) {
+        data=bytes;
+        size = bytes.length;
     }
 }

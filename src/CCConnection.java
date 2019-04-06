@@ -1,22 +1,24 @@
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CCConnection implements Runnable {
 
     private ArrayBlockingQueue<CCPacket> queue;
     private AgenteUDP agente; //sender
-
+    private ConcurrentHashMap<InetAddress, ArrayBlockingQueue<CCPacket>> connections;
     private HashMap<Integer,CCPacket> packetBuffer;
     private InetAddress address;
 
     int lastrecieved = 0;
 
 
-    public CCConnection(InetAddress address, ArrayBlockingQueue<CCPacket> bq, AgenteUDP udp) {
+    public CCConnection(ArrayBlockingQueue<CCPacket> queue, AgenteUDP agente, ConcurrentHashMap<InetAddress, ArrayBlockingQueue<CCPacket>> connections, InetAddress address) {
+        this.queue = queue;
+        this.agente = agente;
+        this.connections = connections;
         this.address = address;
-        this.queue = bq;
-        this.agente = udp;
     }
 
     @Override
@@ -32,6 +34,9 @@ public class CCConnection implements Runnable {
                 e.printStackTrace();
             }
         }
+
+        // fechar
+        //connections.remove(address);
     }
 
     // coisas antigas:
