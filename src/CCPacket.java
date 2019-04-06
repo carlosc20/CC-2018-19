@@ -12,29 +12,34 @@ public class CCPacket {
     private int sequence;
     //TODO private int checksum;
     private byte data[];
+    public static int headersize = 9;
 
     public CCPacket(DatagramPacket packet) {
         InetAddress address = packet.getAddress();
         int port = packet.getPort();
         ByteBuffer wrapped = ByteBuffer.wrap(packet.getData());
-        flags = wrapped.get(0);
-        size = wrapped.getInt(1);
-        sequence = wrapped.getInt(5);
+        flags = wrapped.get();
+        size = wrapped.getInt();
+        data = new byte[size];
+        sequence = wrapped.getInt();
         //TODO ler checksum, ajustar data place
-        wrapped.get(data,6,size);
-        wrapped.getInt(0);
+        wrapped.get(data);
     }
 
 
 
     public DatagramPacket toDatagramPacket() {
-        ByteBuffer b = ByteBuffer.allocate(4);
+        int sizeb= headersize+size;
+        ByteBuffer b = ByteBuffer.allocate(sizeb);
         b.put(flags);
         b.putInt(size);
         b.putInt(sequence);
-        b.put(data);
+        if (size>0)
+            b.put(data);
         //TODO meter checksum
         byte[] buf = b.array();
+        System.out.println(flags+" -- "+size+" -- "+sequence+" -- "+(size+headersize)+"--");
+
         return new DatagramPacket(buf, buf.length, address, port);
     }
 
@@ -53,6 +58,11 @@ public class CCPacket {
         if (isAck)f |= 4;
         p.setFlags(f);
         return p;
+    }
+
+    public void setDestination(InetAddress ad, int p) {
+        address = ad;
+        port = p;
     }
 
     private void setSequence(int seq) {
@@ -116,5 +126,10 @@ public class CCPacket {
         if (c.isACK())
             System.out.println("ACK");
         System.out.println(c.getSequence());
+    }
+
+    public void putData(byte[] bytes) {
+        data=bytes;
+        size = bytes.length;
     }
 }

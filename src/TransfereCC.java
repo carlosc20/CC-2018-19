@@ -18,6 +18,7 @@ public class TransfereCC extends Thread{
     ReentrantLock rl = new ReentrantLock();
     Condition waitingConection = rl.newCondition();
 
+    //TODO COLLECT MANTEM-SE
     private void collect(){
         try {
             CCPacket p = udp.receivePacket();
@@ -26,7 +27,7 @@ public class TransfereCC extends Thread{
             e.printStackTrace();
         }
     }
-
+    //TODO PROCESSPACKET MUDA
     private void processPacket(CCPacket p) {
         //Descarta se for pacote lixo. Checksum
 
@@ -80,6 +81,7 @@ public class TransfereCC extends Thread{
         CCConnection p = accept();
     }
 
+    //TODO TIRAR ACCEPT
     public CCConnection accept(){
         try {
             rl.lock();
