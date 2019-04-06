@@ -1,22 +1,21 @@
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class TransfereCC extends Thread{
 
-    AgenteUDP udp;
+    private static AgenteUDP udp = new AgenteUDP();
 
-    HashMap<InetAddress,CCConnection> conections = new HashMap<>();
+    HashMap <InetAddress,CCConnection> connections = new HashMap<>();
     boolean acceptingConnections = false;
     CCPacket pendingConnection;
     ReentrantLock rl = new ReentrantLock();
     Condition waitingConection = rl.newCondition();
+    LinkedBlockingQueue<CCConnection> pending = new LinkedBlockingQueue<>();
+    boolean isAcceptingConnections = false;
 
     //TODO COLLECT MANTEM-SE
     private void collect(){
@@ -27,30 +26,19 @@ public class TransfereCC extends Thread{
             e.printStackTrace();
         }
     }
+
     //TODO PROCESSPACKET MUDA
     private void processPacket(CCPacket p) {
-        //Descarta se for pacote lixo. Checksum
+        // TODO: checksum
 
-        //Verifica se é pedido de conexao
-        //
-        if(p.isSYN() && acceptingConnections){
-            if(!conections.containsKey(p.getAddress())){
-                rl.lock();
-                pendingConnection = p;
-                acceptingConnections = false;
-                waitingConection.signal();
-                rl.unlock();
-            }
-            return;
+        if(p.isSYN() && !this.connections.containsKey(p.getAddress()) && isAcceptingConnections){
+            CCConnection n = new CCConnection(p.getAddress(),p.getPort(),udp);
+            this.connections.put(p.getAddress(),n);
+            pending.add(n);
         }
-        //Coloca-o em buffer se for bom e tiver conexao.
-        try{
 
-            if (conections.containsKey(p.getAddress())){
-                conections.get(p.getAddress()).putPack(p);
-            }
-        }catch (NullPointerException e){
-
+        if (this.connections.containsKey(p.getAddress())){
+            this.connections.get(p.getAddress()).putPack(p);
         }
     }
 
@@ -83,34 +71,8 @@ public class TransfereCC extends Thread{
 
     //TODO TIRAR ACCEPT
     public CCConnection accept(){
-        try {
-            rl.lock();
-            acceptingConnections = true;
-            CCConnection c = null;
-            while (acceptingConnections){
-                try {
-                    waitingConection.await();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                if (acceptingConnections == false){
-                    //se num conexões maior que 1 meter numero de waiters
-                    System.out.println("OMG IM OUT");
-                    c = new CCConnection(pendingConnection,udp);
-                    try {
-                        c.startHandshake();
-                    } catch (ConnectionLostException e) {
-                        acceptingConnections = true;
-                        e.printStackTrace();
-                    }
-                }
-            }
-            conections.put(c.getAdress(),c);
-            return c;
-        }
-        finally {
-            rl.unlock();
-        }
+        acceptingConnections = true;
+        return null;
     }
 
     public static void main(String args[]){

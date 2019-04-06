@@ -1,21 +1,21 @@
-import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashMap;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class CCConnection implements Runnable {
 
     HashMap<Integer,CCPacket> packetBuffer;
     private InetAddress address;
+    int port;
     int lastrecieved = 0;
 
-    private ArrayBlockingQueue<CCPacket> queue;
+    private LinkedBlockingQueue<CCPacket> queue = new LinkedBlockingQueue<CCPacket>();
     private AgenteUDP agente; //sender
 
 
-    public CCConnection(InetAddress address, ArrayBlockingQueue<CCPacket> bq, AgenteUDP udp) {
+    public CCConnection(InetAddress address, int port, AgenteUDP udp) {
         this.address = address;
-        this.queue = bq;
+        this.port = port;
         this.agente = udp;
     }
 
