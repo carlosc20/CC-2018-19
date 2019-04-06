@@ -1,23 +1,40 @@
-import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashMap;
+import java.util.concurrent.ArrayBlockingQueue;
 
-public class CCConnection {
+public class CCConnection implements Runnable {
 
-    HashMap<Integer,CCPacket> packetBuffer;
+    private ArrayBlockingQueue<CCPacket> queue;
+    private AgenteUDP agente; //sender
+
+    private HashMap<Integer,CCPacket> packetBuffer;
     private InetAddress address;
-    AgenteUDP u;//sender
+
     int lastrecieved = 0;
 
 
-    public CCConnection(CCPacket pendingConnection, AgenteUDP udp) {
-        u = udp;
-        try {
-            u.sendPacket(pendingConnection);
-        } catch (IOException e) {
-            e.printStackTrace();
+    public CCConnection(InetAddress address, ArrayBlockingQueue<CCPacket> bq, AgenteUDP udp) {
+        this.address = address;
+        this.queue = bq;
+        this.agente = udp;
+    }
+
+    @Override
+    public void run() {
+
+        // handshake
+
+        while(true) {
+            try {
+                CCPacket p = queue.take();
+                System.out.println(p.getPort());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
+
+    // coisas antigas:
 
     public void putPack(CCPacket p) {
         if (p.isACK()){
@@ -54,4 +71,6 @@ public class CCConnection {
         System.out.println("HANDSHAKE");
         //throw new ConnectionLostException();
     }
+
+
 }
