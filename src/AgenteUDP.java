@@ -28,9 +28,18 @@ public class AgenteUDP {
     public CCPacket receivePacket() throws IOException {
         byte[] buf = new byte[MTU];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
-        socket.receive(packet);
-        System.out.println("Recieved");
-        return new CCPacket(packet);
+        CCPacket c = null;
+        boolean recieved = false;
+        while (!recieved){
+            try {
+                socket.receive(packet);
+                c = new CCPacket(packet);
+                System.out.println("Recieved");
+                recieved =true;
+            } catch (InvalidPacketException e) {
+            }
+        }
+        return c;
     }
 
     public void sendPacket(CCPacket p) throws IOException {
