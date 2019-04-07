@@ -61,11 +61,15 @@ public class CCDataReciever implements Runnable{
         while (!recieved){
             try {
                 c = pending.take();
-                c.startHandshake();
-                System.out.println("Connected!!!");
-                recieved = true;
-            } catch (InterruptedException | ConnectionLostException e) {
-
+                try {
+                    c.startHandshake();
+                    System.out.println("Connected!!!");
+                    recieved = true;
+                } catch (ConnectionLostException e) {
+                    this.connections.remove(c.getAddress());
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
         isAcceptingConnections = false;
