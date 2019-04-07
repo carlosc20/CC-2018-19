@@ -18,7 +18,6 @@ public class CCPacket {
     public CCPacket(DatagramPacket packet) throws InvalidPacketException {
         address = packet.getAddress();
         port = packet.getPort();
-        System.out.println(address+" --- "+port);
         ByteBuffer wrapped = ByteBuffer.wrap(packet.getData());
         flags = wrapped.get();
         size = wrapped.getInt();
@@ -42,7 +41,6 @@ public class CCPacket {
             b.put(data);
         //TODO meter checksum
         byte[] buf = b.array();
-        System.out.println(flags+" -- "+size+" -- "+sequence+" -- "+(size+headersize)+"--");
 
         return new DatagramPacket(buf, buf.length, address, port);
     }
@@ -135,5 +133,9 @@ public class CCPacket {
     public void putData(byte[] bytes) {
         data=bytes;
         size = bytes.length;
+    }
+
+    public void printself() {
+        System.out.println(flags+ "---"+ getSequence());
     }
 }

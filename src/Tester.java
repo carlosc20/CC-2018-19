@@ -9,7 +9,20 @@ public class Tester {
 
 
     public static void main(String []args){
-        sendtoServer();
+        try {
+            connection();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void connection() throws UnknownHostException {
+        CCSocket c = new CCSocket(InetAddress.getLocalHost(),7777);
+        try {
+            c.connect();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static void sendtoServer() {

@@ -41,13 +41,11 @@ public class AgenteUDP {
                 System.out.println("ERROR");
             }
         }
-        System.out.println("Recieved");
         return c;
     }
 
     public void sendPacket(CCPacket p) throws IOException {
         socket.send(p.toDatagramPacket());
-        System.out.println("SEND");
     }
 
     public void close() {

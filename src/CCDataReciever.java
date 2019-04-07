@@ -19,8 +19,13 @@ public class CCDataReciever implements Runnable{
 
     public CCDataReciever() {
         udp = new AgenteUDP();
+        Thread t = new Thread(this);
+        t.start();
     }
 
+    public void send(CCPacket p) throws IOException {
+        udp.sendPacket(p);
+    }
 
     public void run(){
         while (true) {
@@ -43,8 +48,10 @@ public class CCDataReciever implements Runnable{
             pending.add(n);
         }
         if (this.connections.containsKey(p.getAddress())){
+
             this.connections.get(p.getAddress()).putPack(p);
         }
+
     }
 
     public CCSocket accept(){
@@ -55,6 +62,7 @@ public class CCDataReciever implements Runnable{
             try {
                 c = pending.take();
                 c.startHandshake();
+                System.out.println("Connected!!!");
                 recieved = true;
             } catch (InterruptedException | ConnectionLostException e) {
 
@@ -64,4 +72,7 @@ public class CCDataReciever implements Runnable{
         return c;
     }
 
+    public void putConnect(InetAddress address, CCSocket ccSocket) {
+        this.connections.put(address,ccSocket);
+    }
 }
