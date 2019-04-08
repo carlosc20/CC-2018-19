@@ -14,15 +14,16 @@ public class AgenteUDP {
     public AgenteUDP (int port){
         try {
             socket = new DatagramSocket(port);
-        } catch (SocketException e1) {
-            e1.printStackTrace();
+        } catch (SocketException e) {
+            e.printStackTrace();
         }
     }
+
     public AgenteUDP() {
         try {
             socket = new DatagramSocket();
         } catch (SocketException e) {
-            //e.printStackTrace();
+            e.printStackTrace();
         }
     }
 

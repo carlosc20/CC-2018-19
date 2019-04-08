@@ -3,7 +3,7 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class CCDataReciever implements Runnable{
+public class CCDataReceiver implements Runnable {
 
 
     private HashMap<InetAddress, CCSocket> connections = new HashMap<>();
@@ -11,13 +11,13 @@ public class CCDataReciever implements Runnable{
     private boolean isAcceptingConnections = false;
     private AgenteUDP udp;
 
-    public CCDataReciever(int port) {
+    public CCDataReceiver(int port) {
         udp = new AgenteUDP(port);
         Thread t = new Thread(this);
         t.start();
     }
 
-    public CCDataReciever() {
+    public CCDataReceiver() {
         udp = new AgenteUDP();
         Thread t = new Thread(this);
         t.start();
@@ -41,27 +41,27 @@ public class CCDataReciever implements Runnable{
     //TODO PROCESSPACKET MUDA
     private void processPacket(CCPacket p) {
         // TODO: checksum
-        if(p.isSYN() && !this.connections.containsKey(p.getAddress()) && isAcceptingConnections){
-            CCSocket n = new CCSocket(p.getAddress(),p.getPort(),this);
-            this.putConnect(p.getAddress(),n);
-            pending.add(n);
-        }
-        if (this.connections.containsKey(p.getAddress())){
-            this.connections.get(p.getAddress()).putPack(p);
-        }
 
+        if(p.isSYN() && !connections.containsKey(p.getAddress()) && isAcceptingConnections){
+            CCSocket socket = new CCSocket(p.getAddress(), p.getPort(),this);
+            putConnect(p.getAddress(), socket);
+            pending.add(socket);
+        }
+        if (connections.containsKey(p.getAddress())){
+            connections.get(p.getAddress()).putPack(p);
+        }
     }
 
     public CCSocket accept(){
         isAcceptingConnections = true;
-        boolean recieved = false;
-        CCSocket c = null;
-        while (!recieved){
+        CCSocket c;
+        while (true){
             try {
                 c = pending.take();
                 try {
                     c.startHandshake();
-                    recieved = true;
+                    isAcceptingConnections = false;
+                    return c;
                 } catch (ConnectionLostException e) {
                     this.connections.remove(c.getAddress());
                 }
@@ -69,8 +69,6 @@ public class CCDataReciever implements Runnable{
                 e.printStackTrace();
             }
         }
-        isAcceptingConnections = false;
-        return c;
     }
 
     public synchronized void putConnect(InetAddress address, CCSocket ccSocket) {

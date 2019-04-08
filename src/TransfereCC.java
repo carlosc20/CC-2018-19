@@ -6,11 +6,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class TransfereCC extends Thread {
 
 
-    CCServerSocket serverSocket;
+    private CCServerSocket serverSocket;
 
-
-    public TransfereCC(){
-        //ServerSocket
+    public TransfereCC() {
         serverSocket = new CCServerSocket(7777);
     }
 
@@ -24,6 +22,7 @@ public class TransfereCC extends Thread {
     public void put(InetAddress i , String x, String fich){
         //Put servers no ficheiro
     }
+
 
     //SERVERSTUFF
     void attendConections(){
@@ -40,16 +39,16 @@ public class TransfereCC extends Thread {
     }
 
 
-
+    private CCSocket accept() {
+        return serverSocket.accept();
+    }
 
     public static void main(String[] args){
         TransfereCC tcc = new TransfereCC();
         while (true){
-            CCSocket con = tcc.accept();
+            CCSocket socket = tcc.accept();
         }
     }
 
-    private CCSocket accept() {
-        return serverSocket.accept();
-    }
+
 }
