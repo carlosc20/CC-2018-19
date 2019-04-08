@@ -44,7 +44,9 @@ public class TransfereCC extends Thread {
 
     public static void main(String[] args){
         TransfereCC tcc = new TransfereCC();
-        CCSocket con = tcc.accept();
+        while (true){
+            CCSocket con = tcc.accept();
+        }
     }
 
     private CCSocket accept() {

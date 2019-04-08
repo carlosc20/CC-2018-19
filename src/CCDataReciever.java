@@ -41,10 +41,9 @@ public class CCDataReciever implements Runnable{
     //TODO PROCESSPACKET MUDA
     private void processPacket(CCPacket p) {
         // TODO: checksum
-
         if(p.isSYN() && !this.connections.containsKey(p.getAddress()) && isAcceptingConnections){
             CCSocket n = new CCSocket(p.getAddress(),p.getPort(),this);
-            this.connections.put(p.getAddress(),n);
+            this.putConnect(p.getAddress(),n);
             pending.add(n);
         }
         if (this.connections.containsKey(p.getAddress())){
@@ -61,7 +60,6 @@ public class CCDataReciever implements Runnable{
             try {
                 c = pending.take();
                 try {
-                    System.out.println("Connected!!!");
                     c.startHandshake();
                     recieved = true;
                 } catch (ConnectionLostException e) {
@@ -75,11 +73,11 @@ public class CCDataReciever implements Runnable{
         return c;
     }
 
-    public void putConnect(InetAddress address, CCSocket ccSocket) {
+    public synchronized void putConnect(InetAddress address, CCSocket ccSocket) {
         this.connections.put(address,ccSocket);
     }
 
-    public void endConnect(InetAddress address) {
+    public synchronized void endConnect(InetAddress address) {
         this.connections.remove(address);
     }
 }
