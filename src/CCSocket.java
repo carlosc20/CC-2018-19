@@ -12,6 +12,7 @@ public class CCSocket implements Runnable {
     HashMap<Integer,CCPacket> packetBuffer = new HashMap<>();
     private InetAddress address;
     int port;
+    int seq = 0;
     int lastrecieved = 0;
     int lastAckrecieved = 0;
     private LinkedBlockingQueue<CCPacket> queue = new LinkedBlockingQueue<CCPacket>();
@@ -46,6 +47,17 @@ public class CCSocket implements Runnable {
     }
 
     public void putPack(CCPacket p) {
+        if (p.isFIN() && p.isACK()){
+            CCPacket ack = CCPacket.createQuickPack(p.getSequence(),p.isSYN(),true,p.isFIN());
+            ack.setDestination(p.getAddress(),p.getPort());
+            try {
+                dataReciever.send(ack);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            System.out.println("Connection End");
+            dataReciever.endConnect(address);
+        }
         if (p.isACK()){
             //DO STUFF ACK RELATED
             if (p.getSequence()> lastAckrecieved)
@@ -54,8 +66,10 @@ public class CCSocket implements Runnable {
         }
 
         //Guarda-o se for um pacote novo
-        if (!packetBuffer.containsKey(p.getSequence()))
+        if (!packetBuffer.containsKey(p.getSequence())){
             packetBuffer.put(p.getSequence(),p);
+            seq++;
+        }
         //TODO Calcular o ack correto ... por causa de retransmições
         //Enviar Confirmação Ack
         CCPacket ack = CCPacket.createQuickPack(p.getSequence(),p.isSYN(),true,p.isFIN());
@@ -125,6 +139,16 @@ public class CCSocket implements Runnable {
             i++;
         }
         System.out.println("Connected!!!");
+    }
+
+    public void close(){
+        CCPacket synpack = CCPacket.createQuickPack(++seq,false,false,true);
+        synpack.setDestination(address,port);
+        try {
+            this.send(synpack);
+        } catch (IOException | ConnectionLostException e) {
+            e.printStackTrace();
+        }
     }
 
     private void recieveHandshake() throws PacketNotRecievedException{

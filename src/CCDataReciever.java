@@ -48,7 +48,6 @@ public class CCDataReciever implements Runnable{
             pending.add(n);
         }
         if (this.connections.containsKey(p.getAddress())){
-
             this.connections.get(p.getAddress()).putPack(p);
         }
 
@@ -62,8 +61,8 @@ public class CCDataReciever implements Runnable{
             try {
                 c = pending.take();
                 try {
-                    c.startHandshake();
                     System.out.println("Connected!!!");
+                    c.startHandshake();
                     recieved = true;
                 } catch (ConnectionLostException e) {
                     this.connections.remove(c.getAddress());
@@ -78,5 +77,9 @@ public class CCDataReciever implements Runnable{
 
     public void putConnect(InetAddress address, CCSocket ccSocket) {
         this.connections.put(address,ccSocket);
+    }
+
+    public void endConnect(InetAddress address) {
+        this.connections.remove(address);
     }
 }

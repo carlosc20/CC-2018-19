@@ -20,6 +20,7 @@ public class Tester {
         CCSocket c = new CCSocket(InetAddress.getLocalHost(),7777);
         try {
             c.connect();
+            c.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
