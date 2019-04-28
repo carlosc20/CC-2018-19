@@ -23,7 +23,7 @@ public class CCSocket implements Runnable {
     private LinkedBlockingQueue<CCPacket> queue = new LinkedBlockingQueue<>();
 
     HashSet<Integer> acksNotSent = new HashSet<>();
-    int lastAckSent = 0;
+    int lastAckSent = -1;
 
     private void calculateAck(CCPacket p){
         if(!acksNotSent.contains(p.getSequence()))
@@ -90,13 +90,13 @@ public class CCSocket implements Runnable {
         //Guarda-o se for um pacote novo
         if (!packetBuffer.containsKey(p.getSequence())){
             packetBuffer.put(p.getSequence(),p);
-            recieveSeq++;
         }
         //Calcula ack a mandar e manda
         calculateAck(p);
     }
 
     public byte[] receive() {
+        
         return null;
     }
 
@@ -210,7 +210,7 @@ public class CCSocket implements Runnable {
 
     private void receiveHandshake() throws PacketNotRecievedException{
         int i = 0;
-        while (!packetBuffer.containsKey(1)){
+        while (lastAckSent!=0){
             try {
                 TimeUnit.SECONDS.sleep(1);
             } catch (InterruptedException e) {
@@ -220,10 +220,11 @@ public class CCSocket implements Runnable {
                 throw new PacketNotRecievedException();
             i++;
         }
+        recieveSeq++;
     }
 
     public void startHandshake() throws ConnectionLostException{
-        CCPacket synpack = CCPacket.createQuickPack(1,true,false,false);
+        CCPacket synpack = CCPacket.createQuickPack(0,true,false,false);
         synpack.setDestination(address,port);
         try {
             this.send(synpack);
