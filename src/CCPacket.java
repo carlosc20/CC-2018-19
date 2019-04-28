@@ -8,22 +8,26 @@ public class CCPacket {
     private int port;
     //Por esta ordem
     private byte flags; //1- syn 2- fin 4- ack 8-hellopacket
-    private int size;
+
+    private int totalSize;
     private int sequence;
     //TODO private int checksum;
-    private byte data[];
+    private byte data[] = null;
     public static int headersize = 9;
-    public static int maxsize = 256;
+    public static int maxsize = AgenteUDP.MTU-headersize;
+    private int size = maxsize;
 
     public CCPacket(DatagramPacket packet) throws InvalidPacketException {
         address = packet.getAddress();
         port = packet.getPort();
         ByteBuffer wrapped = ByteBuffer.wrap(packet.getData());
         flags = wrapped.get();
-        size = wrapped.getInt();
+        totalSize = wrapped.getInt();
+        if(totalSize < maxsize)
+            size = totalSize;
         sequence = wrapped.getInt();
         //TODO improve validação
-        if (size > maxsize || size < 0 || sequence < 0 || (flags | 7) != 7)
+        if (size < 0 || sequence < 0 || (flags | 7) != 7)
             throw new InvalidPacketException();
         data = new byte[size];
         //TODO ler checksum, ajustar data place
@@ -35,7 +39,7 @@ public class CCPacket {
         int sizeb= headersize+size;
         ByteBuffer b = ByteBuffer.allocate(sizeb);
         b.put(flags);
-        b.putInt(size);
+        b.putInt(totalSize);
         b.putInt(sequence);
         if (size>0)
             b.put(data);
@@ -142,4 +146,18 @@ public class CCPacket {
     public byte[] getData() {
         return data;
     }
+
+    public int getTotalSize() {
+        return totalSize;
+    }
+
+    public void setTotalSize(int i) {
+        totalSize= i;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+
 }

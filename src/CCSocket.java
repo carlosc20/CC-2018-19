@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -12,20 +13,20 @@ public class CCSocket implements Runnable {
     //Numero de pacotes que manda no inicio
     private static int startingSendNumber = 5;
 
-    private HashMap<Integer,CCPacket> packetBuffer = new HashMap<>();
+    private ConcurrentHashMap<Integer,CCPacket> packetBuffer = new ConcurrentHashMap<>();
     private InetAddress address;
     private int port;
     //Sequencia de pacs enviados
-    private int sendSeq = 0;
+    private volatile int sendSeq = 0;
     //Sequencia de pacs recebidos
-    private int recieveSeq = 0;
-    private int lastAckReceived = 0;
+    private volatile int recieveSeq = 0;
+    private volatile int lastAckReceived = 0;
     private LinkedBlockingQueue<CCPacket> queue = new LinkedBlockingQueue<>();
 
     HashSet<Integer> acksNotSent = new HashSet<>();
     int lastAckSent = -1;
 
-    private void calculateAck(CCPacket p){
+    private synchronized void calculateAck(CCPacket p){
         if(!acksNotSent.contains(p.getSequence()))
             acksNotSent.add(p.getSequence());
 
@@ -40,6 +41,8 @@ public class CCSocket implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        if (lastAckSent>recieveSeq)
+            notify();
     }
 
     public CCSocket (InetAddress address, int port, CCDataReceiver dRec){
@@ -83,7 +86,6 @@ public class CCSocket implements Runnable {
         if (p.isACK()){
             if (p.getSequence() > lastAckReceived)
                 lastAckReceived = p.getSequence();
-                System.out.println("gotAck "+p.getSequence());
             return;
         }
 
@@ -95,9 +97,36 @@ public class CCSocket implements Runnable {
         calculateAck(p);
     }
 
+    private synchronized CCPacket retrievePack(){
+        while (lastAckSent == recieveSeq) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        CCPacket res = packetBuffer.get(recieveSeq);
+        recieveSeq++;
+        return res;
+    }
+
     public byte[] receive() {
-        
-        return null;
+        CCPacket p = retrievePack();
+        byte[] res = p.getData();
+        if(p.getTotalSize() == p.getSize())
+            return res;
+        int sizeMissing = p.getTotalSize() - p.getSize();
+        res = Arrays.copyOf(res,p.getTotalSize()+1);
+        int pos = p.getData().length;
+        while (sizeMissing>0) {
+            p = retrievePack();
+            byte[] data = p.getData();
+            for (int i = 0; i < p.getSize(); i++) {
+                res[pos + i] = data[i];
+            }
+            sizeMissing-=p.getSize();
+        }
+        return res;
     }
 
     public void send(byte[] data) throws IOException, ConnectionLostException {
@@ -105,14 +134,17 @@ public class CCSocket implements Runnable {
         List<CCPacket> pacs = new ArrayList<>();
         int MTU = CCPacket.maxsize;
         int s = 0;
-
+        int sent = 0;
         while (s*MTU <= data.length){
             sendSeq++;
             CCPacket p = CCPacket.createQuickPack(sendSeq,false,false,false);
             p.setDestination(address,port);
-            byte[] r = Arrays.copyOfRange(data,s*MTU,(s+1)*MTU);
+            p.setTotalSize(data.length-sent);
+            byte[] r;
+            r = Arrays.copyOfRange(data,s*MTU,(s+1)*MTU);
             p.putData(r);
             pacs.add(p);
+            sent += p.getSize();
             s++;
         }
         send(pacs);
@@ -224,6 +256,7 @@ public class CCSocket implements Runnable {
     }
 
     public void startHandshake() throws ConnectionLostException{
+        recieveSeq++;
         CCPacket synpack = CCPacket.createQuickPack(0,true,false,false);
         synpack.setDestination(address,port);
         try {

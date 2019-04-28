@@ -47,6 +47,7 @@ public class TransfereCC extends Thread {
         TransfereCC tcc = new TransfereCC();
         while (true){
             CCSocket socket = tcc.accept();
+            System.out.println("RETRIEVING:" +new String(socket.receive()));
         }
     }
 
