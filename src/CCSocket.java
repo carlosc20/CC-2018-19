@@ -144,19 +144,20 @@ public class CCSocket implements Runnable {
                 e.printStackTrace();
             }
             // Se não recebeu nenhum ack falha
-            if (lastAckReceived == firstSeq+i+1 ){
+            if (lastAckReceived-firstSeq+1 == i ){
                 fails++;
                 if (fails == 3)
                     throw new ConnectionLostException();
             }
             // Se recebeu todos manda mais packs duma vez
-            if (lastAckReceived == firstSeq+i+numToSend+1){
+            if (lastAckReceived == (firstSeq+i+numToSend+1)){
                 numToSend *= 2;
             }
             //se nao diminui o num de pacotes a mandar
             else if (numToSend > 1)
                 numToSend -= numToSend/2;
-            i = lastAckReceived;
+            i = lastAckReceived - firstSeq + 1;
+            System.out.println(i+" -- "+ lastAckReceived + " -- " + (lastAckReceived - firstSeq + 1) );
         }
     }
 
