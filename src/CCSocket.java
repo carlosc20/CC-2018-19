@@ -1,5 +1,8 @@
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -12,7 +15,10 @@ public class CCSocket implements Runnable {
     private HashMap<Integer,CCPacket> packetBuffer = new HashMap<>();
     private InetAddress address;
     private int port;
-    private int seq = 0;
+    //Sequencia de pacs enviados
+    private int sendSeq = 0;
+    //Sequencia de pacs recebidos
+    private int recieveSeq = 0;
     private int lastAckReceived = 0;
     private LinkedBlockingQueue<CCPacket> queue = new LinkedBlockingQueue<>();
 
@@ -58,13 +64,14 @@ public class CCSocket implements Runnable {
         if (p.isACK()){
             if (p.getSequence() > lastAckReceived)
                 lastAckReceived = p.getSequence();
+                System.out.println("gotAck "+p.getSequence());
             return;
         }
 
         //Guarda-o se for um pacote novo
         if (!packetBuffer.containsKey(p.getSequence())){
             packetBuffer.put(p.getSequence(),p);
-            seq++;
+            recieveSeq++;
         }
         //TODO Calcular o ack correto ... por causa de retransmições
         //Enviar Confirmação Ack
@@ -81,9 +88,22 @@ public class CCSocket implements Runnable {
         return null;
     }
 
-    public void send(byte[] data){
+    public void send(byte[] data) throws IOException, ConnectionLostException {
         //create ccpacket
-        //TODO
+        List<CCPacket> pacs = new ArrayList<>();
+        int MTU = CCPacket.maxsize;
+        int s = 0;
+
+        while (s*MTU <= data.length){
+            sendSeq++;
+            CCPacket p = CCPacket.createQuickPack(sendSeq,false,false,false);
+            p.setDestination(address,port);
+            byte[] r = Arrays.copyOfRange(data,s*MTU,(s+1)*MTU);
+            p.putData(r);
+            pacs.add(p);
+            s++;
+        }
+        send(pacs);
     }
 
     //So manda 1
@@ -105,11 +125,39 @@ public class CCSocket implements Runnable {
                 its++;
         }
         throw new ConnectionLostException();
-
     }
 
-    private void send(List<CCPacket> p){
+    private void send(List<CCPacket> p) throws IOException, ConnectionLostException {
         //TODO mandar mais do que um pacote
+        int numToSend = 1;
+        int fails = 0;
+        int firstSeq = p.get(0).getSequence();
+        for (int i = 0; i < p.size(); ) {
+            for (int j = 0; j < numToSend && i+j < p.size() ; j++) {
+                dataReceiver.send(p.get(i+j));
+            }
+            // Wait for last pack
+            try {
+                System.out.println("Gonna wait a sec");
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            // Se não recebeu nenhum ack falha
+            if (lastAckReceived == firstSeq+i+1 ){
+                fails++;
+                if (fails == 3)
+                    throw new ConnectionLostException();
+            }
+            // Se recebeu todos manda mais packs duma vez
+            if (lastAckReceived == firstSeq+i+numToSend+1){
+                numToSend *= 2;
+            }
+            //se nao diminui o num de pacotes a mandar
+            else if (numToSend > 1)
+                numToSend -= numToSend/2;
+            i = lastAckReceived;
+        }
     }
 
 
@@ -137,7 +185,7 @@ public class CCSocket implements Runnable {
     }
 
     public void close(){
-        CCPacket synpack = CCPacket.createQuickPack(++seq,false,false,true);
+        CCPacket synpack = CCPacket.createQuickPack(++sendSeq,false,false,true);
         synpack.setDestination(address,port);
         try {
             this.send(synpack);

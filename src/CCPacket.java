@@ -131,11 +131,15 @@ public class CCPacket {
     }
 
     public void putData(byte[] bytes) {
-        data=bytes;
+        data = bytes;
         size = bytes.length;
     }
 
     public void printself() {
         System.out.println(flags+ "---"+ getSequence());
+    }
+
+    public byte[] getData() {
+        return data;
     }
 }
