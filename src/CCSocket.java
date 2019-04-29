@@ -119,17 +119,19 @@ public class CCSocket implements Runnable {
         res = Arrays.copyOf(res,p.getTotalSize()+1);
         int pos = p.getData().length;
         while (sizeMissing>0) {
+            System.out.println("Total Size: "+p.getTotalSize()+" "+new String(p.getData()));
             p = retrievePack();
             byte[] data = p.getData();
             for (int i = 0; i < p.getSize(); i++) {
                 res[pos + i] = data[i];
             }
+            pos+=p.getSize();
             sizeMissing-=p.getSize();
         }
         return res;
     }
 
-    public void send(byte[] data) throws IOException, ConnectionLostException {
+    public synchronized void send(byte[] data) throws IOException, ConnectionLostException {
         //create ccpacket
         List<CCPacket> pacs = new ArrayList<>();
         int MTU = CCPacket.maxsize;
@@ -195,13 +197,15 @@ public class CCSocket implements Runnable {
                 if (fails == 3)
                     throw new ConnectionLostException();
             }
+            else
+                fails = 0;
             // Se recebeu todos manda mais packs duma vez
             if (lastAckReceived == (p.get(i+j-1).getSequence())){
                 numToSend *= 2;
             }
             //se nao diminui o num de pacotes a mandar
             else if (numToSend > 1)
-                numToSend -= numToSend/2;
+                numToSend -= numToSend/4;
             i = lastAckReceived - firstSeq + 1;
         }
     }

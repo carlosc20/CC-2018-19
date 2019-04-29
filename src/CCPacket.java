@@ -8,13 +8,12 @@ public class CCPacket {
     private int port;
     //Por esta ordem
     private byte flags; //1- syn 2- fin 4- ack 8-hellopacket
-
     private int totalSize;
     private int sequence;
     //TODO private int checksum;
     private byte data[] = null;
     public static int headersize = 9;
-    public static int maxsize = AgenteUDP.MTU-headersize;
+    public static int maxsize = 5;
     private int size = maxsize;
 
     public CCPacket(DatagramPacket packet) throws InvalidPacketException {

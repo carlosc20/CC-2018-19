@@ -8,7 +8,7 @@ public class Tester {
         try {
             CCSocket c = new CCSocket(InetAddress.getLocalHost(),7777);
             c.connect();
-            c.send("Stuff+Stuff".getBytes());
+            c.send("Stuff+Stuff+stufff".getBytes());
             c.close();
         } catch (IOException | ConnectionLostException e) {
             e.printStackTrace();

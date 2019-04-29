@@ -8,7 +8,7 @@ import java.util.Arrays;
 public class AgenteUDP {
 
     private DatagramSocket socket;
-    public static final int MTU = 256;
+    public static final int MTU = CCPacket.headersize+CCPacket.maxsize;
 
 
     public AgenteUDP (int port){
