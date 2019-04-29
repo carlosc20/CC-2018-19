@@ -8,7 +8,7 @@ import java.util.Arrays;
 public class AgenteUDP {
 
     private DatagramSocket socket;
-    private static final int MTU = 256;
+    public static final int MTU = 256;
 
 
     public AgenteUDP (int port){
