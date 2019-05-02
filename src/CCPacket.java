@@ -1,6 +1,9 @@
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 public class CCPacket {
 
@@ -8,13 +11,40 @@ public class CCPacket {
     private int port;
     //Por esta ordem
     private byte flags; //1- syn 2- fin 4- ack 8-hellopacket
-    private int totalSize;
+    private int totalSize = 0;
     private int sequence;
+    private long checksum;
     //TODO private int checksum;
-    private byte data[] = null;
-    public static int headersize = 9;
-    public static int maxsize = 5;
+    public static int headersize = 9+8;
+    public static int maxsize = 1000;
     private int size = maxsize;
+    private byte data[] = null;
+
+    public long calcChecksum(){
+
+        int sizeb= headersize+maxsize;
+
+        ByteBuffer b = ByteBuffer.allocate(sizeb);
+
+        b.put(flags);
+        b.putInt(totalSize);
+        b.putInt(sequence);
+        b.putLong(0);
+        if (totalSize>0)
+            b.put(Arrays.copyOf(data,maxsize));
+        //TODO meter checksum
+        Checksum checksum = new CRC32();
+
+        // update the current checksum with the specified array of bytes
+        checksum.update(b.array(), 0, sizeb);
+
+        // get the current checksum value
+        return checksum.getValue();
+    }
+
+    public boolean checkChecksum(){
+        return (checksum == calcChecksum());
+    }
 
     public CCPacket(DatagramPacket packet) throws InvalidPacketException {
         address = packet.getAddress();
@@ -25,12 +55,18 @@ public class CCPacket {
         if(totalSize < maxsize)
             size = totalSize;
         sequence = wrapped.getInt();
+        checksum = wrapped.getLong();
         //TODO improve validação
         if (size < 0 || sequence < 0 || (flags | 7) != 7)
             throw new InvalidPacketException();
         data = new byte[size];
-        //TODO ler checksum, ajustar data place
         wrapped.get(data);
+        //check Checksum
+        if(!checkChecksum()){
+          if (data.length>0)
+              System.out.println(sequence);
+              throw new InvalidPacketException();
+        }
     }
 
 
@@ -40,6 +76,7 @@ public class CCPacket {
         b.put(flags);
         b.putInt(totalSize);
         b.putInt(sequence);
+        b.putLong(calcChecksum());
         if (size>0)
             b.put(data);
         //TODO meter checksum
@@ -51,6 +88,7 @@ public class CCPacket {
     public CCPacket() {
         flags = 0;
         size = 0;
+        totalSize = 0;
         sequence = 0;
     }
 

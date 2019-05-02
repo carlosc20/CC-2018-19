@@ -98,7 +98,7 @@ public class CCSocket implements Runnable {
     }
 
     private synchronized CCPacket retrievePack(){
-        while (lastAckSent == recieveSeq) {
+        while (lastAckSent <= recieveSeq) {
             try {
                 wait();
             } catch (InterruptedException e) {
