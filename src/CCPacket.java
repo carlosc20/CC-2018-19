@@ -31,7 +31,7 @@ public class CCPacket {
         b.putInt(sequence);
         b.putLong(0);
         if (totalSize>0)
-            b.put(Arrays.copyOf(data,maxsize));
+            b.put(data);
         //TODO meter checksum
         Checksum checksum = new CRC32();
 

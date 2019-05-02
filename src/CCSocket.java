@@ -143,7 +143,10 @@ public class CCSocket implements Runnable {
             p.setDestination(address,port);
             p.setTotalSize(data.length-sent);
             byte[] r;
-            r = Arrays.copyOfRange(data,s*MTU,(s+1)*MTU);
+            if(p.getTotalSize()>MTU)
+                r = Arrays.copyOfRange(data,s*MTU,(s+1)*MTU);
+            else
+                r = Arrays.copyOfRange(data,s*MTU,(s*MTU+p.getTotalSize()));
             p.putData(r);
             pacs.add(p);
             sent += p.getSize();
