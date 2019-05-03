@@ -170,8 +170,6 @@ public class CCSocket {
     }
 
     private synchronized CCPacket retrievePack() throws ConnectionLostException {
-        //-1 porque o ultimo ack é o de fin
-
         while (lastAckSent <= recieveSeq && connected) {
             try {
                 wait();
