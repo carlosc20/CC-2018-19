@@ -171,15 +171,16 @@ public class CCSocket {
 
     private synchronized CCPacket retrievePack() throws ConnectionLostException {
         //-1 porque o ultimo ack é o de fin
-        if (!connected && lastAckSent-1>recieveSeq)
-            throw new ConnectionLostException();
-        while (lastAckSent <= recieveSeq) {
+
+        while (lastAckSent <= recieveSeq && connected) {
             try {
                 wait();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
+        if (lastAckSent<=recieveSeq)
+            throw new ConnectionLostException();
         CCPacket res = packetBuffer.get(recieveSeq);
         recieveSeq++;
         return res;
