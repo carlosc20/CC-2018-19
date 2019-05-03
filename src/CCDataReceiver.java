@@ -10,16 +10,24 @@ public class CCDataReceiver implements Runnable {
     private LinkedBlockingQueue<CCSocket> pending = new LinkedBlockingQueue<>();
     private boolean isAcceptingConnections = false;
     private AgenteUDP udp;
+    Thread t;
 
     public CCDataReceiver(int port) {
         udp = new AgenteUDP(port);
-        Thread t = new Thread(this);
+        t = new Thread(this);
         t.start();
     }
 
     public CCDataReceiver() {
         udp = new AgenteUDP();
-        Thread t = new Thread(this);
+        t = new Thread(this);
+        t.start();
+    }
+
+    public CCDataReceiver(int port, boolean b) {
+        udp = new AgenteUDP(port);
+        isServerSocket = true;
+        t = new Thread(this);
         t.start();
     }
 
@@ -29,6 +37,16 @@ public class CCDataReceiver implements Runnable {
 
     public void run(){
         while (true) {
+            if (udp.isClosed()){
+                pending.clear();
+                if (isAcceptingConnections)
+                    try {
+                        pending.put(new CCSocket(null,1));
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                return;
+            }
             try {
                 CCPacket p = udp.receivePacket();
                 processPacket(p);
@@ -52,12 +70,16 @@ public class CCDataReceiver implements Runnable {
         }
     }
 
-    public CCSocket accept(){
+    public CCSocket accept() throws IOException {
         isAcceptingConnections = true;
         CCSocket c;
         while (true){
+            if(udp.isClosed())
+                throw new IOException("ServerSocket is closed");
             try {
                 c = pending.take();
+                if(udp.isClosed())
+                    throw new IOException("ServerSocket is closed");
                 try {
                     c.startHandshake();
                     isAcceptingConnections = false;
@@ -70,6 +92,7 @@ public class CCDataReceiver implements Runnable {
             }
         }
     }
+    boolean isServerSocket = false;
 
     public synchronized void putConnect(InetAddress address, CCSocket ccSocket) {
         this.connections.put(address,ccSocket);
@@ -77,5 +100,12 @@ public class CCDataReceiver implements Runnable {
 
     public synchronized void endConnect(InetAddress address) {
         this.connections.remove(address);
+        if (!isServerSocket && this.connections.size() == 0){
+            udp.close();
+        }
+    }
+
+    public void close() {
+        udp.close();
     }
 }

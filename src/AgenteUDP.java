@@ -48,7 +48,9 @@ public class AgenteUDP {
     public void sendPacket(CCPacket p) throws IOException {
         socket.send(p.toDatagramPacket());
     }
-
+    public boolean isClosed(){
+        return socket.isClosed();
+    }
     public void close() {
         socket.close();
     }

@@ -9,7 +9,7 @@ public class TransfereCC extends Thread {
     private CCServerSocket serverSocket;
 
     public TransfereCC() {
-        serverSocket = new CCServerSocket(7777);
+        serverSocket = new CCServerSocket(7777,true);
     }
 
 
