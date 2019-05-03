@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class CCSocket implements Runnable {
+public class CCSocket {
 
     private CCDataReceiver dataReceiver;
 
@@ -20,11 +20,16 @@ public class CCSocket implements Runnable {
     private volatile int sendSeq = 0;
     //Sequencia de pacs recebidos
     private volatile int recieveSeq = 0;
-    private volatile int lastAckReceived = 0;
+    private volatile int lastAckReceived = -1;
+
     private LinkedBlockingQueue<CCPacket> queue = new LinkedBlockingQueue<>();
 
     HashSet<Integer> acksNotSent = new HashSet<>();
     int lastAckSent = -1;
+
+    private boolean recievingHandshake = false;
+    //Controlo de Congestão AIMD(Aditive Increase/Multiplicative Decrese
+    private int numToSend = 4;
 
     private synchronized void calculateAck(CCPacket p){
         if(!acksNotSent.contains(p.getSequence()))
@@ -34,7 +39,13 @@ public class CCSocket implements Runnable {
             lastAckSent++;
 
         //Enviar Confirmação Ack
-        CCPacket ack = CCPacket.createQuickPack(lastAckSent,p.isSYN(),true, p.isFIN());
+        boolean sin = false, fin = false;
+        if (p.getSequence() == 0)
+            sin = true;
+        if (p.getSequence() == lastAckSent){
+            fin = p.isFIN();
+        }
+        CCPacket ack = CCPacket.createQuickPack(lastAckSent,sin,true, fin);
         ack.setDestination(p.getAddress(),p.getPort());
         try {
             dataReceiver.send(ack);
@@ -58,46 +69,110 @@ public class CCSocket implements Runnable {
         dataReceiver.putConnect(address,this);
     }
 
-    @Override
-    public void run() {
-        // handshake
-        while(true) {
-            try {
-                CCPacket p = queue.take();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+    private float alpha = 0.125f;
+    private float beta = 0.25f;
+    private long estimatedRTT = 0;
+    private long devRTT = 0;
+    //se lastAckRecieved < Key só tem tempo de saída
+    //senao tem tempo total
+    private HashMap<Integer,Long> sampleRTTs= new HashMap<>();
+    private boolean connected = true;
+
+
+    //Só adiciona o primeiro SampleRTT
+    public void addToSampleRTT(int seq){
+        if (sampleRTTs.containsKey(seq))
+            return;
+        sampleRTTs.put(seq,System.currentTimeMillis());
+    }
+
+    private void calcSampleRTT(int psequence){
+        long tms = System.currentTimeMillis()-sampleRTTs.get(psequence);
+        sampleRTTs.put(psequence,tms);
+    }
+
+    private synchronized void disconnect() throws ConnectionLostException {
+        connected = false;
+        notify();
+        throw new ConnectionLostException();
+    }
+
+    private synchronized void updateTime(int prevSeq){
+        //Starting
+        while (prevSeq < lastAckReceived){
+            prevSeq++;
+            if (sampleRTTs.containsKey(prevSeq)){
+                long sampleRTT = sampleRTTs.get(prevSeq);
+                devRTT =  (long) ((1-beta)*(float)devRTT + beta*(float)Math.abs(sampleRTT-estimatedRTT));
+                if(estimatedRTT == 0)
+                    estimatedRTT = sampleRTT;
+                else
+                    estimatedRTT = (long) ((1-alpha)*(float) estimatedRTT + alpha*(float)sampleRTT);
             }
         }
     }
 
-    public void putPack(CCPacket p) {
+    private void waitforAck(){
+        boolean waiting = true;
+        long timeout = (estimatedRTT + 4*devRTT);
+        if (timeout <= 0)
+            timeout = 1000;
+        try {
+            Thread.sleep(timeout);
 
-        if (p.isFIN() && p.isACK()){
-            CCPacket ack = CCPacket.createQuickPack(p.getSequence(),p.isSYN(),true,p.isFIN());
-            ack.setDestination(p.getAddress(),p.getPort());
-            try {
-                dataReceiver.send(ack);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            System.out.println("Connection End");
-            dataReceiver.endConnect(address);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
-        if (p.isACK()){
-            if (p.getSequence() > lastAckReceived)
-                lastAckReceived = p.getSequence();
+        return;
+    }
+
+    private boolean sentFinRequest = false;
+
+    public void putPack(CCPacket p) {
+        int psequence = p.getSequence();
+        if (p.isFIN() && p.isACK()){
+            if (sentFinRequest){
+                CCPacket ack = CCPacket.createQuickPack(p.getSequence(),p.isSYN(),true,p.isFIN());
+                ack.setDestination(p.getAddress(),p.getPort());
+                try {
+                    dataReceiver.send(ack);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                if (psequence > lastAckReceived){
+                    lastAckReceived = psequence;
+                }
+            }
+            dataReceiver.endConnect(address);
+            connected = false;
+            System.out.println("Connection End");
             return;
         }
-
-        //Guarda-o se for um pacote novo
-        if (!packetBuffer.containsKey(p.getSequence())){
-            packetBuffer.put(p.getSequence(),p);
+        if (!packetBuffer.containsKey(psequence)){
+            packetBuffer.put(psequence,p);
         }
+
+        if (p.isACK()){
+            if (psequence > lastAckReceived){
+                calcSampleRTT(psequence);
+                lastAckReceived = psequence;
+            }
+            //Controlo de Congestão
+            else
+                numToSend -= numToSend/2;
+            if (numToSend<1)
+                numToSend = 4;
+            return;
+        }
+        //Guarda-o se for um pacote novo
         //Calcula ack a mandar e manda
         calculateAck(p);
     }
 
-    private synchronized CCPacket retrievePack(){
+    private synchronized CCPacket retrievePack() throws ConnectionLostException {
+        //-1 porque o ultimo ack é o de fin
+        if (!connected && lastAckSent-1>recieveSeq)
+            throw new ConnectionLostException();
         while (lastAckSent <= recieveSeq) {
             try {
                 wait();
@@ -110,7 +185,7 @@ public class CCSocket implements Runnable {
         return res;
     }
 
-    public byte[] receive() {
+    public byte[] receive() throws ConnectionLostException {
         CCPacket p = retrievePack();
         byte[] res = p.getData();
         if(p.getTotalSize() == p.getSize())
@@ -119,7 +194,6 @@ public class CCSocket implements Runnable {
         res = Arrays.copyOf(res,p.getTotalSize()+1);
         int pos = p.getData().length;
         while (sizeMissing>0) {
-            System.out.println("Total Size: "+p.getTotalSize()+" "+new String(p.getData()));
             p = retrievePack();
             byte[] data = p.getData();
             for (int i = 0; i < p.getSize(); i++) {
@@ -157,60 +231,58 @@ public class CCSocket implements Runnable {
 
     //So manda 1
     private void send(CCPacket p) throws IOException, ConnectionLostException {
-        boolean response = false;
-        int its = 0;
-        while (its < 3) { //remanda
+        int fails = 0;
+        while (true) { //remanda
+            if (!p.isFIN())
+                addToSampleRTT(p.getSequence());
+            System.out.println("Sending Pack: " + sendSeq);
             dataReceiver.send(p);
-            try {
-                System.out.println("Gonna wait a sec");
-                TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            System.out.println("Last Ack Recieved:" + lastAckReceived);
-            if(lastAckReceived >= p.getSequence())
+            waitforAck();
+            System.out.println("Last Ack Recieved: " + lastAckReceived);
+            if(lastAckReceived >= p.getSequence()){
+                if (!p.isFIN())
+                    updateTime(p.getSequence()-1);
                 return;
-            else
-                its++;
+            }
+            fails ++;
+            if(fails == 3)
+                disconnect();
         }
-        throw new ConnectionLostException();
     }
 
     private void send(List<CCPacket> p) throws IOException, ConnectionLostException {
         //TODO mandar mais do que um pacote
         System.out.println("Sending List:");
-        int numToSend = startingSendNumber;
         int fails = 0;
         int firstSeq = p.get(0).getSequence();
         for (int i = 0; i < p.size(); ) {
             int j;
-            for (j = 0; j < numToSend && i+j < p.size() ; j++) {
-                dataReceiver.send(p.get(i+j));
+            //Calcula tamanho da janela
+            int windowSize = numToSend;
+            for (j = 0; j < windowSize && i+j < p.size() ; j++) {
+                CCPacket pack = p.get(i+j);
+                addToSampleRTT(pack.getSequence());
+                dataReceiver.send(pack);
             }
+            System.out.println("Gonna send packs " +(p.get(i).getSequence())+" to "+p.get(i+j-1).getSequence() );
             // Wait for last pack
-            try {
-                System.out.println("Gonna wait for ack " +(p.get(i+j-1).getSequence()));
-                TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitforAck();
+            System.out.println("Last Ack Recieved: " + lastAckReceived);
+            int numRecieved = lastAckReceived+1-i-firstSeq;
             // Se não recebeu nenhum ack falha
-            if (lastAckReceived-firstSeq+1 == i ){
-                fails++;
-                if (fails == 3)
-                    throw new ConnectionLostException();
-            }
-            else
+            if (numRecieved == 0 ){
+                fails ++;
+                if(fails == 3)
+                    disconnect();
+            }else{
+                updateTime(i+firstSeq-1);
                 fails = 0;
-            // Se recebeu todos manda mais packs duma vez
-            if (lastAckReceived == (p.get(i+j-1).getSequence())){
-                numToSend *= 2;
             }
-            //se nao diminui o num de pacotes a mandar
-            else if (numToSend > 1)
-                numToSend -= numToSend/4;
+            //Aumenta o tamanho da janela
+            numToSend += numRecieved;
             i = lastAckReceived - firstSeq + 1;
         }
+        startingSendNumber = numToSend;
     }
 
 
@@ -223,8 +295,10 @@ public class CCSocket implements Runnable {
         synpack.setDestination(address,port);
         boolean recieved = false;
         int i = 0;
+        long tInit = System.currentTimeMillis();
         while (!recieved){
             try {
+                addToSampleRTT(0);
                 dataReceiver.send(synpack);
                 receiveHandshake();
                 recieved = true;
@@ -234,10 +308,13 @@ public class CCSocket implements Runnable {
                 throw new IOException("Failed to Connect");
             i++;
         }
+        updateTime(-1);
         System.out.println("Connected!!!");
     }
 
     public void close(){
+        System.out.println("CLOSING");
+        sentFinRequest = true;
         CCPacket synpack = CCPacket.createQuickPack(++sendSeq,false,false,true);
         synpack.setDestination(address,port);
         try {
@@ -249,21 +326,18 @@ public class CCSocket implements Runnable {
 
     private void receiveHandshake() throws PacketNotRecievedException{
         int i = 0;
+        recievingHandshake = true;
         while (lastAckSent!=0){
-            try {
-                TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitforAck();
             if (i>=3)
                 throw new PacketNotRecievedException();
             i++;
         }
+        recievingHandshake = false;
         recieveSeq++;
     }
 
     public void startHandshake() throws ConnectionLostException{
-        recieveSeq++;
         CCPacket synpack = CCPacket.createQuickPack(0,true,false,false);
         synpack.setDestination(address,port);
         try {
@@ -271,5 +345,6 @@ public class CCSocket implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        recieveSeq++;
     }
 }
