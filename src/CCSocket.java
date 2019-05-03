@@ -24,8 +24,8 @@ public class CCSocket {
 
     private LinkedBlockingQueue<CCPacket> queue = new LinkedBlockingQueue<>();
 
-    HashSet<Integer> acksNotSent = new HashSet<>();
-    int lastAckSent = -1;
+    private HashSet<Integer> acksNotSent = new HashSet<>();
+    private int lastAckSent = -1;
 
     private boolean recievingHandshake = false;
     //Controlo de Congestão AIMD(Aditive Increase/Multiplicative Decrese
@@ -170,14 +170,14 @@ public class CCSocket {
     }
 
     private synchronized CCPacket retrievePack() throws ConnectionLostException {
-        while (lastAckSent <= recieveSeq && connected) {
+        while (lastAckSent < recieveSeq && connected) {
             try {
                 wait();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-        if (lastAckSent<=recieveSeq)
+        if (lastAckSent < recieveSeq)
             throw new ConnectionLostException();
         CCPacket res = packetBuffer.get(recieveSeq);
         recieveSeq++;
