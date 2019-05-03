@@ -47,7 +47,12 @@ public class TransfereCC extends Thread {
         TransfereCC tcc = new TransfereCC();
         while (true){
             CCSocket socket = tcc.accept();
-            System.out.println("RETRIEVING:" +new String(socket.receive()));
+            try {
+                System.out.println("RETRIEVING:\n" + new String(socket.receive()));
+                System.out.println("\nfim");
+            } catch (ConnectionLostException e) {
+                e.printStackTrace();
+            }
         }
     }
 
