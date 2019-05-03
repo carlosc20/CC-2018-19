@@ -1,3 +1,4 @@
+import java.io.IOException;
 
 public class CCServerSocket {
 
@@ -7,7 +8,14 @@ public class CCServerSocket {
         dataReceiver = new CCDataReceiver(port);
     }
 
-    public CCSocket accept(){
+    public CCServerSocket(int i, boolean b) {
+        dataReceiver = new CCDataReceiver(i,b);
+    }
+
+    public void close(){
+        dataReceiver.close();
+    }
+    public CCSocket accept() throws IOException {
         return dataReceiver.accept();
     }
 

@@ -170,14 +170,14 @@ public class CCSocket {
     }
 
     private synchronized CCPacket retrievePack() throws ConnectionLostException {
-        while (lastAckSent <= recieveSeq && connected) {
+        while (lastAckSent < recieveSeq && connected) {
             try {
                 wait();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-        if (lastAckSent<=recieveSeq)
+        if (lastAckSent<recieveSeq)
             throw new ConnectionLostException();
         CCPacket res = packetBuffer.get(recieveSeq);
         recieveSeq++;
