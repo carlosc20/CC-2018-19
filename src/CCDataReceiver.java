@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -52,6 +53,7 @@ public class CCDataReceiver implements Runnable {
                 processPacket(p);
             } catch (IOException e) {
                 e.printStackTrace();
+                return;
             }
         }
     }
@@ -59,14 +61,15 @@ public class CCDataReceiver implements Runnable {
     //TODO PROCESSPACKET MUDA
     private void processPacket(CCPacket p) {
         // TODO: checksum
-
+        if (p == null)
+            return;
         if(p.isSYN() && !connections.containsKey(p.getAddress()) && isAcceptingConnections){
             CCSocket socket = new CCSocket(p.getAddress(), p.getPort(),this);
             putConnect(p.getAddress(), socket);
             pending.add(socket);
         }
         if (connections.containsKey(p.getAddress())){
-            connections.get(p.getAddress()).putPack(p);
+            connections.get(p.getAddress()).placePack(p);
         }
     }
 

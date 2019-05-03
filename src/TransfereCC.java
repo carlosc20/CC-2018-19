@@ -40,7 +40,12 @@ public class TransfereCC extends Thread {
 
 
     private CCSocket accept() {
-        return serverSocket.accept();
+        try {
+            return serverSocket.accept();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public static void main(String[] args){
@@ -48,6 +53,7 @@ public class TransfereCC extends Thread {
         while (true){
             CCSocket socket = tcc.accept();
             try {
+                System.out.println("RETRIEVING:\n" + new String(socket.receive()));
                 System.out.println("RETRIEVING:\n" + new String(socket.receive()));
                 System.out.println("\nfim");
             } catch (ConnectionLostException e) {

@@ -6,12 +6,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class CCSocket {
+public class CCSocket extends Thread{
 
     private CCDataReceiver dataReceiver;
 
     //Numero de pacotes que manda no inicio
-    private static int startingSendNumber = 20;
+    private static int startingSendNumber = 40;
     private static int cutNumb = 4;
 
     private ConcurrentHashMap<Integer,CCPacket> packetBuffer = new ConcurrentHashMap<>();
@@ -24,6 +24,23 @@ public class CCSocket {
     private volatile int lastAckReceived = -1;
 
     private LinkedBlockingQueue<CCPacket> queue = new LinkedBlockingQueue<>();
+
+    public void placePack(CCPacket p){
+            queue.add(p);
+    }
+
+    @Override
+    public void run() {
+        while (connected){
+            CCPacket c = null;
+            try {
+                c = queue.take();
+                putPack(c);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
     HashSet<Integer> acksNotSent = new HashSet<>();
     int lastAckSent = -1;
@@ -62,6 +79,7 @@ public class CCSocket {
         this.address = address;
         this.port = port;
         dataReceiver = dRec;
+        this.start();
     }
 
     public CCSocket(InetAddress address, int port) {
@@ -69,6 +87,7 @@ public class CCSocket {
         this.port = port;
         dataReceiver = new CCDataReceiver();
         dataReceiver.putConnect(address,this);
+        this.start();
     }
 
     private float alpha = 0.125f;
@@ -77,28 +96,22 @@ public class CCSocket {
     private long devRTT = 0;
     //se lastAckRecieved < Key só tem tempo de saída
     //senao tem tempo total
-    private HashMap<Integer,Long> sentTimes= new HashMap<>();
-    private HashMap<Integer,Long> sampleRTTs= new HashMap<>();
+    private Map<Integer,Long> sentTimes= new ConcurrentHashMap<>();
+    private Map<Integer,Long> sampleRTTs= new ConcurrentHashMap<>();
     private boolean connected = true;
 
 
     //Só adiciona o primeiro SampleRTT
     public void addToSampleRTT(int seq){
-        synchronized (sentTimes){
-            if (sentTimes.containsKey(seq))
-                return;
-            sentTimes.put(seq,System.currentTimeMillis());
-        }
+        if (sentTimes.containsKey(seq))
+            return;
+        sentTimes.put(seq,System.currentTimeMillis());
     }
 
     private void calcSampleRTT(int psequence){
-        synchronized (sentTimes){
-            synchronized (sampleRTTs){
-                long tms = System.currentTimeMillis()-sentTimes.get(psequence);
-                sampleRTTs.put(psequence,tms);
-                sentTimes.remove(psequence);
-            }
-        }
+        long tms = System.currentTimeMillis()-sentTimes.get(psequence);
+        sampleRTTs.put(psequence,tms);
+        sentTimes.remove(psequence);
     }
 
     private synchronized void disconnect() throws ConnectionLostException {
@@ -109,18 +122,16 @@ public class CCSocket {
 
     private synchronized void updateTime(int prevSeq){
         //Starting
-        synchronized (sampleRTTs){
-            while (prevSeq < lastAckReceived){
-                prevSeq++;
-                if (sampleRTTs.containsKey(prevSeq)){
-                    long sampleRTT = sampleRTTs.get(prevSeq);
-                    devRTT =  (long) ((1-beta)*(float)devRTT + beta*(float)Math.abs(sampleRTT-estimatedRTT));
-                    if(estimatedRTT == 0)
-                        estimatedRTT = sampleRTT;
-                    else
-                        estimatedRTT = (long) ((1-alpha)*(float) estimatedRTT + alpha*(float)sampleRTT);
-                    sampleRTTs.remove(prevSeq);
-                }
+        while (prevSeq < lastAckReceived){
+            prevSeq++;
+            if (sampleRTTs.containsKey(prevSeq)){
+                long sampleRTT = sampleRTTs.get(prevSeq);
+                devRTT =  (long) ((1-beta)*(float)devRTT + beta*(float)Math.abs(sampleRTT-estimatedRTT));
+                if(estimatedRTT == 0)
+                    estimatedRTT = sampleRTT;
+                else
+                    estimatedRTT = (long) ((1-alpha)*(float) estimatedRTT + alpha*(float)sampleRTT);
+                sampleRTTs.remove(prevSeq);
             }
         }
     }
@@ -142,6 +153,8 @@ public class CCSocket {
 
     public void putPack(CCPacket p) {
         int psequence = p.getSequence();
+        if (!p.checkChecksum())
+            return;
         if (p.isFIN() && p.isACK()){
             if (sentFinRequest){
                 CCPacket ack = CCPacket.createQuickPack(p.getSequence(),p.isSYN(),true,p.isFIN());
@@ -241,7 +254,9 @@ public class CCSocket {
             s++;
         }
         System.out.println("N PACKETS: " + pacs.size());
+        long sd = System.currentTimeMillis();
         send(pacs);
+        System.out.println((System.currentTimeMillis()-sd)/1000+" segundos");
     }
 
     //So manda 1

@@ -40,6 +40,8 @@ public class AgenteUDP {
                 recieved =true;
             } catch (InvalidPacketException e) {
                 System.out.println("ERROR");
+            } catch (SocketException s){
+                return null;
             }
         }
         return c;

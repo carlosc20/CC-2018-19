@@ -16,7 +16,7 @@ public class CCPacket {
     private long checksum;
     //TODO private int checksum;
     public static int headersize = 9+8;
-    public static int maxsize = 1000;
+    public static int maxsize = 1470;
     private int size = maxsize;
     private byte data[] = null;
 
@@ -61,12 +61,6 @@ public class CCPacket {
             throw new InvalidPacketException();
         data = new byte[size];
         wrapped.get(data);
-        //check Checksum
-        if(!checkChecksum()){
-          if (data.length>0)
-              System.out.println(sequence);
-              throw new InvalidPacketException();
-        }
     }
 
 
