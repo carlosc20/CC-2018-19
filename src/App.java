@@ -84,7 +84,12 @@ public class App {
                     if(serverSocket == null) {
                         serverSocket = new CCServerSocket(7777);
                     }
-                    CCSocket c = serverSocket.accept();
+                    CCSocket c = null;
+                    try {
+                        c = serverSocket.accept();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     connections.put(++nCon, c);
                     System.out.println("Ligado a " + c.getAddress().getHostAddress() + ", conexão número " + nCon);
                 }
