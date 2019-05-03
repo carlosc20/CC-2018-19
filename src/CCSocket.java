@@ -75,20 +75,27 @@ public class CCSocket {
     private long devRTT = 0;
     //se lastAckRecieved < Key só tem tempo de saída
     //senao tem tempo total
+    private HashMap<Integer,Long> sentTimes= new HashMap<>();
     private HashMap<Integer,Long> sampleRTTs= new HashMap<>();
     private boolean connected = true;
 
 
     //Só adiciona o primeiro SampleRTT
     public void addToSampleRTT(int seq){
-        if (sampleRTTs.containsKey(seq))
-            return;
-        sampleRTTs.put(seq,System.currentTimeMillis());
+        synchronized (sentTimes){
+            if (sentTimes.containsKey(seq))
+                return;
+            sentTimes.put(seq,System.currentTimeMillis());
+        }
     }
 
     private void calcSampleRTT(int psequence){
-        long tms = System.currentTimeMillis()-sampleRTTs.get(psequence);
-        sampleRTTs.put(psequence,tms);
+        synchronized (sentTimes){
+            synchronized (sampleRTTs){
+                long tms = System.currentTimeMillis()-sentTimes.get(psequence);
+                sampleRTTs.put(psequence,tms);
+            }
+        }
     }
 
     private synchronized void disconnect() throws ConnectionLostException {
@@ -119,7 +126,6 @@ public class CCSocket {
             timeout = 1000;
         try {
             Thread.sleep(timeout);
-
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -200,6 +206,7 @@ public class CCSocket {
             }
             pos+=p.getSize();
             sizeMissing-=p.getSize();
+            System.out.println("Missing: "+ sizeMissing);
         }
         return res;
     }
@@ -225,6 +232,7 @@ public class CCSocket {
             sent += p.getSize();
             s++;
         }
+        System.out.println("N PACKETS: " + pacs.size());
         send(pacs);
     }
 
