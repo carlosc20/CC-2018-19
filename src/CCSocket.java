@@ -11,7 +11,8 @@ public class CCSocket {
     private CCDataReceiver dataReceiver;
 
     //Numero de pacotes que manda no inicio
-    private static int startingSendNumber = 5;
+    private static int startingSendNumber = 20;
+    private static int cutNumb = 4;
 
     private ConcurrentHashMap<Integer,CCPacket> packetBuffer = new ConcurrentHashMap<>();
     private InetAddress address;
@@ -29,14 +30,15 @@ public class CCSocket {
 
     private boolean recievingHandshake = false;
     //Controlo de Congestão AIMD(Aditive Increase/Multiplicative Decrese
-    private int numToSend = 4;
+    private int numToSend = startingSendNumber;
 
     private synchronized void calculateAck(CCPacket p){
         if(!acksNotSent.contains(p.getSequence()))
             acksNotSent.add(p.getSequence());
 
-        while (acksNotSent.contains(lastAckSent+1))
+        while (acksNotSent.contains(lastAckSent+1)){
             lastAckSent++;
+        }
 
         //Enviar Confirmação Ack
         boolean sin = false, fin = false;
@@ -94,6 +96,7 @@ public class CCSocket {
             synchronized (sampleRTTs){
                 long tms = System.currentTimeMillis()-sentTimes.get(psequence);
                 sampleRTTs.put(psequence,tms);
+                sentTimes.remove(psequence);
             }
         }
     }
@@ -106,15 +109,18 @@ public class CCSocket {
 
     private synchronized void updateTime(int prevSeq){
         //Starting
-        while (prevSeq < lastAckReceived){
-            prevSeq++;
-            if (sampleRTTs.containsKey(prevSeq)){
-                long sampleRTT = sampleRTTs.get(prevSeq);
-                devRTT =  (long) ((1-beta)*(float)devRTT + beta*(float)Math.abs(sampleRTT-estimatedRTT));
-                if(estimatedRTT == 0)
-                    estimatedRTT = sampleRTT;
-                else
-                    estimatedRTT = (long) ((1-alpha)*(float) estimatedRTT + alpha*(float)sampleRTT);
+        synchronized (sampleRTTs){
+            while (prevSeq < lastAckReceived){
+                prevSeq++;
+                if (sampleRTTs.containsKey(prevSeq)){
+                    long sampleRTT = sampleRTTs.get(prevSeq);
+                    devRTT =  (long) ((1-beta)*(float)devRTT + beta*(float)Math.abs(sampleRTT-estimatedRTT));
+                    if(estimatedRTT == 0)
+                        estimatedRTT = sampleRTT;
+                    else
+                        estimatedRTT = (long) ((1-alpha)*(float) estimatedRTT + alpha*(float)sampleRTT);
+                    sampleRTTs.remove(prevSeq);
+                }
             }
         }
     }
@@ -154,7 +160,7 @@ public class CCSocket {
             System.out.println("Connection End");
             return;
         }
-        if (!packetBuffer.containsKey(psequence)){
+        if (psequence>=lastAckSent && !packetBuffer.containsKey(psequence)){
             packetBuffer.put(psequence,p);
         }
 
@@ -164,10 +170,11 @@ public class CCSocket {
                 lastAckReceived = psequence;
             }
             //Controlo de Congestão
-            else
-                numToSend -= numToSend/2;
-            if (numToSend<1)
-                numToSend = 4;
+            else{
+                numToSend -= numToSend/cutNumb;
+            }
+            if (numToSend<startingSendNumber)
+                numToSend = startingSendNumber;
             return;
         }
         //Guarda-o se for um pacote novo
@@ -186,6 +193,7 @@ public class CCSocket {
         if (lastAckSent<recieveSeq)
             throw new ConnectionLostException();
         CCPacket res = packetBuffer.get(recieveSeq);
+        packetBuffer.remove(recieveSeq);
         recieveSeq++;
         return res;
     }
@@ -206,7 +214,7 @@ public class CCSocket {
             }
             pos+=p.getSize();
             sizeMissing-=p.getSize();
-            System.out.println("Missing: "+ sizeMissing);
+//            System.out.println("Missing: "+ sizeMissing);
         }
         return res;
     }
@@ -271,10 +279,10 @@ public class CCSocket {
                 addToSampleRTT(pack.getSequence());
                 dataReceiver.send(pack);
             }
-            System.out.println("Gonna send packs " +(p.get(i).getSequence())+" to "+p.get(i+j-1).getSequence() );
+//            System.out.println("Gonna send packs " +(p.get(i).getSequence())+" to "+p.get(i+j-1).getSequence() );
             // Wait for last pack
             waitforAck();
-            System.out.println("Last Ack Recieved: " + lastAckReceived);
+//            System.out.println("Last Ack Recieved: " + lastAckReceived);
             int numRecieved = lastAckReceived+1-i-firstSeq;
             // Se não recebeu nenhum ack falha
             if (numRecieved == 0 ){
