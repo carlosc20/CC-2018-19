@@ -15,6 +15,7 @@ public class CCServerSocket {
     public void close(){
         dataReceiver.close();
     }
+
     public CCSocket accept() throws IOException {
         return dataReceiver.accept();
     }

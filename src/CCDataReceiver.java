@@ -11,7 +11,7 @@ public class CCDataReceiver implements Runnable {
     private LinkedBlockingQueue<CCSocket> pending = new LinkedBlockingQueue<>();
     private boolean isAcceptingConnections = false;
     private AgenteUDP udp;
-    Thread t;
+    private Thread t;
 
     public CCDataReceiver(int port) {
         udp = new AgenteUDP(port);
@@ -95,7 +95,7 @@ public class CCDataReceiver implements Runnable {
             }
         }
     }
-    boolean isServerSocket = false;
+    private boolean isServerSocket = false;
 
     public synchronized void putConnect(InetAddress address, CCSocket ccSocket) {
         this.connections.put(address,ccSocket);

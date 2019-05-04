@@ -9,20 +9,14 @@ import java.util.Scanner;
 
 public class App {
 
-    private static int nCon = 0;
-    private static Map<Integer, CCSocket> connections = new HashMap<>();
-
-    private static CCServerSocket serverSocket = null;
-
-
-
     public static void main(String []args) {
+        TransfereCC tcc = new TransfereCC();
         final String dir = System.getProperty("user.dir");
         System.out.println("current dir = " + dir);
         Scanner s = new Scanner(System.in);
         while(true) {
             String input = s.nextLine();
-            if(input == null) break;
+            if(input.equals("")) break;
 
             String[] cmds = input.split(" ");
             switch (cmds[0].toLowerCase()) {
@@ -33,10 +27,8 @@ public class App {
                     }
                     try {
                         InetAddress address = InetAddress.getByName(cmds[1]);
-                        CCSocket c = new CCSocket(address,7777);
-                        c.connect();
-                        connections.put(++nCon, c);
-                        System.out.println("Ligado a " + address.getHostAddress() + ", conexão número " + nCon);
+                        int con = tcc.connect(address);
+                        System.out.println("Ligado a " + address.getHostAddress() + ", conexão número " + con);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -48,20 +40,15 @@ public class App {
                         break;
                     }
                     int con = Integer.parseInt(cmds[1]);
-                    CCSocket c = connections.get(con);
-                    if(c == null) {
-                        System.out.println("Conexão não existe");
-                        break;
-                    }
                     String filename = cmds[2];
-                    Path fileLocation = Paths.get(filename);
                     try {
-                        byte[] data = Files.readAllBytes(fileLocation);
-                        c.send(data); // NAO FUNCIONA
-                        //c.close();
-                        System.out.println("Enviou de ficheiro: " + new String(data));
-                    } catch (ConnectionLostException | IOException e) {
+                        tcc.put(con, filename);
+                    } catch (IOException e) {
                         e.printStackTrace();
+                    } catch (ConnectionLostException e) {
+                        System.out.println("Conexão perdida: " + e.getMessage());
+                    } catch (ConnectionDoesntExistException e) {
+                        System.out.println("Conexão não existe");
                     }
                 }
                 break;
@@ -71,28 +58,42 @@ public class App {
                         break;
                     }
                     int con = Integer.parseInt(cmds[1]);
-                    CCSocket c = connections.get(con);
-                    if(c == null) {
+                    try {
+                        tcc.close(con);
+                        System.out.println("Conexão " + con + " fechada");
+                    } catch (ConnectionDoesntExistException e) {
                         System.out.println("Conexão não existe");
+                    }
+                }
+                break;
+                case "accept": {
+                    new Thread(() -> { tcc.accept(); }).start();
+                }
+                break;
+                case "get": {
+                    if (cmds.length < 3) {
+                        System.out.println("Argumentos insuficientes");
                         break;
                     }
-                    c.close();
-                    connections.remove(con);
-                    System.out.println("Conexão " + con + " fechada");
-                }
-                case "accept": {
-                    if(serverSocket == null) {
-                        serverSocket = new CCServerSocket(7777);
-                    }
-                    CCSocket c = null;
+                    int con = Integer.parseInt(cmds[1]);
+                    String filename = cmds[2];
                     try {
-                        c = serverSocket.accept();
+                        tcc.get(con, filename);
+                    } catch (ConnectionDoesntExistException e) {
+                        System.out.println("Conexão não existe");
                     } catch (IOException e) {
                         e.printStackTrace();
+                    } catch (ConnectionLostException e) {
+                        System.out.println("Conexão perdida: " + e.getMessage());
                     }
-                    connections.put(++nCon, c);
-                    System.out.println("Ligado a " + c.getAddress().getHostAddress() + ", conexão número " + nCon);
                 }
+                break;
+                case "list": {
+                    tcc.list();
+                }
+                break;
+                default:
+                    System.out.println("Comando não existe");
             }
         }
     }

@@ -195,9 +195,11 @@ public class CCSocket extends Thread{
     }
 
     private CCPacket retrievePack() throws ConnectionLostException {
-        CCPacket res = null;
+        if (!connected && retrieved.isEmpty()){
+            throw new ConnectionLostException();
+        }
         try {
-            res = retrieved.take();
+            CCPacket res = retrieved.take();
             if (res.isFIN() && res.getSize() == 0)
                 throw new ConnectionLostException();
             return res;
