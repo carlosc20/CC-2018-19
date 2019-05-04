@@ -203,9 +203,11 @@ public class CCSocket extends Thread{
                 e.printStackTrace();
             }
         }
-        if (lastAckSent<recieveSeq)
+        if (lastAckSent < recieveSeq)
             throw new ConnectionLostException();
         CCPacket res = packetBuffer.get(recieveSeq);
+        if (res.isFIN() && res.getSize() == 0)
+            throw new ConnectionLostException();
         packetBuffer.remove(recieveSeq);
         recieveSeq++;
         return res;
