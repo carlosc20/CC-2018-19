@@ -81,6 +81,8 @@ public class CCSocket extends Thread{
     }
 
     private void calcSampleRTT(int psequence){
+        if (!sentTimes.containsKey(psequence))
+            return;
         long tms = System.currentTimeMillis()-sentTimes.get(psequence);
         sampleRTTs.put(psequence,tms);
         sentTimes.remove(psequence);
@@ -143,12 +145,13 @@ public class CCSocket extends Thread{
             return;
         }
 
-        if (psequence>=lastAckSent && !packetBuffer.containsKey(psequence)){
-            packetBuffer.put(psequence,p);
-        }
         if (p.isACK()){
             handleAck(psequence);
             return;
+        }
+
+        if (psequence>=lastAckSent && !packetBuffer.containsKey(psequence)){
+            packetBuffer.put(psequence,p);
         }
         sendAck(p);
     }
@@ -176,7 +179,7 @@ public class CCSocket extends Thread{
             while (packetBuffer.containsKey(lastAckSent+1)){
                 lastAckSent++;
                 oldAck = nextAck = packetBuffer.get(lastAckSent);
-                if (!p.isSYN() && !p.isFIN())
+                if (!p.isSYN() && !p.isFIN() && !p.isACK())
                     retrieved.add(nextAck);
                 packetBuffer.remove(lastAckSent);
             }
@@ -190,7 +193,6 @@ public class CCSocket extends Thread{
             e.printStackTrace();
         }
     }
-
 
     private CCPacket retrievePack() throws ConnectionLostException {
         CCPacket res = null;
@@ -256,15 +258,13 @@ public class CCSocket extends Thread{
     private void send(CCPacket p) throws IOException, ConnectionLostException {
         int fails = 0;
         while (true) { //remanda
-            if (!p.isFIN())
-                addToSampleRTT(p.getSequence());
+            addToSampleRTT(p.getSequence());
             System.out.println("Sending Pack: " + sendSeq);
             dataReceiver.send(p);
             waitforAck();
             System.out.println("Last Ack Recieved: " + lastAckReceived);
             if(lastAckReceived >= p.getSequence()){
-                if (!p.isFIN())
-                    updateTime(p.getSequence()-1);
+                updateTime(p.getSequence()-1);
                 return;
             }
             fails ++;
