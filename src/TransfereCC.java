@@ -22,11 +22,11 @@ public class TransfereCC {
     }
 
 
-    public int connect(InetAddress address) throws IOException {
+    public void connect(InetAddress address) throws IOException {
         CCSocket c = new CCSocket(address,7777);
         c.connect();
         connections.put(++nCon, c);
-        return nCon;
+        System.out.println("Ligado a " + address.getHostAddress() + ", conexão número " + nCon);
     }
 
 
@@ -41,6 +41,7 @@ public class TransfereCC {
         data[0] = 'P';
         System.arraycopy(content, 0, data, 1, content.length);
         c.send(data);
+        System.out.println(nCon + ": Ficheiro enviado em PUT: " + filename);
     }
 
 
@@ -51,6 +52,7 @@ public class TransfereCC {
         }
         c.close();
         connections.remove(con);
+        System.out.println("Conexão " + con + " fechada, com ip " + c.getAddress().getHostAddress());
     }
 
 
@@ -92,9 +94,9 @@ public class TransfereCC {
         System.arraycopy(content, 0, data, 1, content.length);
         c.send(data);
         System.out.println(con + ": Pedido GET enviado do ficheiro: " + name);
-        c.receive();
+        byte[] received = c.receive();
         System.out.println(con + ": Ficheiro recebido: " + name);
-        Files.write(new File(name).toPath(), data);
+        Files.write(new File(name).toPath(), received);
     }
 
     private void handleRequests(CCSocket c, int con) {
@@ -104,6 +106,8 @@ public class TransfereCC {
                 if(data.length > 0) {
                     if(data[0] == 'P') {
                         String filename = "download.txt"; // TODO: ler nome de ficheiro
+                        byte[] content = new byte[data.length - 1];
+                        System.arraycopy(data, 1, content, 0, content.length);
                         System.out.println(con + ": PUT recebido com ficheiro: " + filename);
                         try {
                             Files.write(new File(filename).toPath(), data);
@@ -113,7 +117,7 @@ public class TransfereCC {
                     }
                     else if(data[0] == 'G') {
                         String filename = new String(data).substring(1);
-                        System.out.println(con + ": GET recebido do ficheiro: " + filename);
+                        System.out.println(con + ": Pedido GET recebido do ficheiro: " + filename);
                         byte[] content = new byte[0];
                         try {
                             try {

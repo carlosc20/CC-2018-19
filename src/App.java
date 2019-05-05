@@ -29,8 +29,7 @@ public class App {
                     }
                     try {
                         InetAddress address = InetAddress.getByName(cmds[1]);
-                        int con = tcc.connect(address);
-                        System.out.println("Ligado a " + address.getHostAddress() + ", conexão número " + con);
+                        tcc.connect(address);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -62,7 +61,6 @@ public class App {
                     int con = Integer.parseInt(cmds[1]);
                     try {
                         tcc.close(con);
-                        System.out.println("Conexão " + con + " fechada");
                     } catch (ConnectionDoesntExistException e) {
                         System.out.println("Conexão não existe");
                     }
