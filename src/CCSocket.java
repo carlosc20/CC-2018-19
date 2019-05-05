@@ -99,8 +99,10 @@ public class CCSocket extends Thread{
             if (sampleRTTs.containsKey(prevSeq)){
                 long sampleRTT = sampleRTTs.get(prevSeq);
                 devRTT =  (long) ((1-beta)*(float)devRTT + beta*(float)Math.abs(sampleRTT-estimatedRTT));
-                if(estimatedRTT == 0)
+                if(estimatedRTT == 0){
                     estimatedRTT = sampleRTT;
+                    devRTT = sampleRTT /4;
+                }
                 else
                     estimatedRTT = (long) ((1-alpha)*(float) estimatedRTT + alpha*(float)sampleRTT);
                 sampleRTTs.remove(prevSeq);
