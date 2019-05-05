@@ -1,13 +1,16 @@
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetAddress;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class TransfereCC extends Thread {
+public class TransfereCC {
 
 
     private static int nCon = 0;
@@ -20,7 +23,6 @@ public class TransfereCC extends Thread {
 
 
     public int connect(InetAddress address) throws IOException {
-
         CCSocket c = new CCSocket(address,7777);
         c.connect();
         connections.put(++nCon, c);
@@ -29,7 +31,6 @@ public class TransfereCC extends Thread {
 
 
     public void put(int con, String filename) throws IOException, ConnectionLostException, ConnectionDoesntExistException {
-
         CCSocket c = connections.get(con);
         if(c == null) {
             throw new ConnectionDoesntExistException();
@@ -67,11 +68,12 @@ public class TransfereCC extends Thread {
         if (serverSocket == null) {
             serverSocket = new CCServerSocket(7777);
         }
+        System.out.println("Aguardando por ligações...");
         try {
             CCSocket c = serverSocket.accept();
             connections.put(++nCon, c);
-            System.out.println("Ligado a " + c.getAddress().getHostAddress() + ", conexão número " + nCon); //??
-            handleRequests(c);
+            System.out.println("Ligado a " + c.getAddress().getHostAddress() + ", conexão " + nCon);
+            handleRequests(c, nCon);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -80,7 +82,6 @@ public class TransfereCC extends Thread {
 
 
     public void get(int con, String name) throws ConnectionDoesntExistException, IOException, ConnectionLostException {
-
         CCSocket c = connections.get(con);
         if(c == null) {
             throw new ConnectionDoesntExistException();
@@ -90,27 +91,39 @@ public class TransfereCC extends Thread {
         data[0] = 'G';
         System.arraycopy(content, 0, data, 1, content.length);
         c.send(data);
-
+        System.out.println(con + ": Pedido GET enviado do ficheiro: " + name);
+        c.receive();
+        System.out.println(con + ": Ficheiro recebido: " + name);
+        Files.write(new File(name).toPath(), data);
     }
 
-    private void handleRequests(CCSocket c) {
+    private void handleRequests(CCSocket c, int con) {
         try {
             while (true) {
                 byte[] data = c.receive();
                 if(data.length > 0) {
                     if(data[0] == 'P') {
-                        System.out.println("PUT data:\n" + new String(data));
+                        String filename = "download.txt"; // TODO: ler nome de ficheiro
+                        System.out.println(con + ": PUT recebido com ficheiro: " + filename);
+                        try {
+                            Files.write(new File(filename).toPath(), data);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                     else if(data[0] == 'G') {
-                        System.out.println("GET request:\n" + new String(data));
-                        String filename = new String(data);
-                        Path fileLocation = Paths.get(filename);
+                        String filename = new String(data).substring(1);
+                        System.out.println(con + ": GET recebido do ficheiro: " + filename);
                         byte[] content = new byte[0];
                         try {
-                            if(fileLocation != null) {
+                            try {
+                                Path fileLocation = Paths.get(filename);
                                 content = Files.readAllBytes(fileLocation);
+                            } catch(FileSystemNotFoundException e) {
+                                System.out.println(con + ": Ficheiro não existe: " + filename + ", será enviado pacote vazio");
                             }
                             c.send(content);
+                            System.out.println(con + ": Ficheiro enviado: " + filename);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -118,7 +131,7 @@ public class TransfereCC extends Thread {
                 }
             }
         } catch (ConnectionLostException e) {
-            System.out.println("Conexão: " + c.getAddress().getHostAddress());
+            System.out.println(con + ": Conexão perdida: " + c.getAddress().getHostAddress());
         }
     }
 

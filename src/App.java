@@ -11,8 +11,10 @@ public class App {
 
     public static void main(String []args) {
         TransfereCC tcc = new TransfereCC();
+
         final String dir = System.getProperty("user.dir");
         System.out.println("current dir = " + dir);
+
         Scanner s = new Scanner(System.in);
         while(true) {
             String input = s.nextLine();
@@ -46,7 +48,7 @@ public class App {
                     } catch (IOException e) {
                         e.printStackTrace();
                     } catch (ConnectionLostException e) {
-                        System.out.println("Conexão perdida: " + e.getMessage());
+                        System.out.println(con + ": Conexão perdida: " + e.getMessage());
                     } catch (ConnectionDoesntExistException e) {
                         System.out.println("Conexão não existe");
                     }
@@ -84,7 +86,7 @@ public class App {
                     } catch (IOException e) {
                         e.printStackTrace();
                     } catch (ConnectionLostException e) {
-                        System.out.println("Conexão perdida: " + e.getMessage());
+                        System.out.println(con + ": Conexão perdida: " + e.getMessage());
                     }
                 }
                 break;
