@@ -68,7 +68,7 @@ public class TransfereCC {
 
     public void accept(){
         if (serverSocket == null) {
-            serverSocket = new CCServerSocket(7777);
+            serverSocket = new CCServerSocket(7777,true);
         }
         System.out.println("Aguardando por ligações...");
         try {
