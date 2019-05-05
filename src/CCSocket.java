@@ -89,6 +89,7 @@ public class CCSocket extends Thread{
     }
 
     private void disconnect() throws ConnectionLostException {
+        dataReceiver.endConnect(address);
         connected = false;
         throw new ConnectionLostException();
     }
@@ -252,10 +253,10 @@ public class CCSocket extends Thread{
             sent += p.getSize();
             s++;
         }
-        System.out.println("N PACKETS: " + pacs.size());
+        System.out.println("Numero de PACKETS: " + pacs.size());
         long sd = System.currentTimeMillis();
         send(pacs);
-        System.out.println((System.currentTimeMillis()-sd)/1000+" segundos");
+        System.out.println("Demorou "+(System.currentTimeMillis()-sd)/1000+" segundos para enviar "+ data.length);
     }
 
     //So manda 1
@@ -263,10 +264,8 @@ public class CCSocket extends Thread{
         int fails = 0;
         while (true) { //remanda
             addToSampleRTT(p.getSequence());
-            System.out.println("Sending Pack: " + sendSeq);
             dataReceiver.send(p);
             waitforAck();
-            System.out.println("Last Ack Recieved: " + lastAckReceived);
             if(lastAckReceived >= p.getSequence()){
                 updateTime(p.getSequence()-1);
                 return;
@@ -279,7 +278,6 @@ public class CCSocket extends Thread{
 
     private void send(List<CCPacket> p) throws IOException, ConnectionLostException {
         //TODO mandar mais do que um pacote
-        System.out.println("Sending List:");
         int fails = 0;
         int firstSeq = p.get(0).getSequence();
         for (int i = 0; i < p.size(); ) {
@@ -294,6 +292,7 @@ public class CCSocket extends Thread{
 
             waitforAck();
             int numRecieved = lastAckReceived+1-i-firstSeq;
+            System.out.println("Enviei pacotes do :"+(i+firstSeq)+"ao "+(i+firstSeq+j)+ " ("+j+" pacotes); Recebi ack de "+numRecieved +"pacotes.");
             if (numRecieved == 0 ){
                 fails ++;
                 if(fails == 3)
@@ -345,6 +344,7 @@ public class CCSocket extends Thread{
         try {
             this.send(synpack);
         } catch (IOException |ConnectionLostException e) {
+
         }
     }
 
