@@ -1,13 +1,12 @@
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.SocketException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class CCSocket extends Thread{
 
-    private CCDataReceiver dataReceiver;
+    private CCServerSocket dataReceiver;
 
     //Numero de pacotes que manda no inicio
     private static int startingSendNumber = 4;
@@ -24,7 +23,7 @@ public class CCSocket extends Thread{
 
     private LinkedBlockingQueue<CCPacket> queue = new LinkedBlockingQueue<>();
 
-    public CCSocket (InetAddress address, int port, CCDataReceiver dRec){
+    public CCSocket (InetAddress address, int port, CCServerSocket dRec){
         this.address = address;
         this.port = port;
         dataReceiver = dRec;
@@ -34,7 +33,7 @@ public class CCSocket extends Thread{
     public CCSocket(InetAddress address, int port) {
         this.address = address;
         this.port = port;
-        dataReceiver = new CCDataReceiver();
+        dataReceiver = new CCServerSocket();
         dataReceiver.putConnect(address,this);
         this.start();
     }
