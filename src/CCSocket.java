@@ -11,7 +11,15 @@ public class CCSocket extends Thread{
     //Numero de pacotes que manda no inicio
     private static int startingSendNumber = 4;
     private static int cutNumb = 4;
-
+    int lastAckSent = -1;
+    LinkedBlockingQueue <CCPacket> retrieved = new LinkedBlockingQueue<>();
+    private float alpha = 0.125f;
+    private float beta = 0.25f;
+    private long estimatedRTT = 0;
+    private long devRTT = 0;
+    private Map<Integer,Long> sentTimes= new ConcurrentHashMap<>();
+    private Map<Integer,Long> sampleRTTs= new ConcurrentHashMap<>();
+    private boolean connected = true;
     private ConcurrentHashMap<Integer,CCPacket> packetBuffer = new ConcurrentHashMap<>();
     private InetAddress address;
     private int port;
@@ -55,22 +63,6 @@ public class CCSocket extends Thread{
         }
     }
 
-    int lastAckSent = -1;
-
-
-
-    LinkedBlockingQueue <CCPacket> retrieved = new LinkedBlockingQueue<>();
-
-
-
-
-    private float alpha = 0.125f;
-    private float beta = 0.25f;
-    private long estimatedRTT = 0;
-    private long devRTT = 0;
-    private Map<Integer,Long> sentTimes= new ConcurrentHashMap<>();
-    private Map<Integer,Long> sampleRTTs= new ConcurrentHashMap<>();
-    private boolean connected = true;
 
 
     public void addToSampleRTT(int seq){
@@ -291,7 +283,7 @@ public class CCSocket extends Thread{
 
             waitforAck();
             int numRecieved = lastAckReceived+1-i-firstSeq;
-            System.out.println("Enviei pacotes do :"+(i+firstSeq)+"ao "+(i+firstSeq+j)+ " ("+j+" pacotes); Recebi ack de "+numRecieved +"pacotes.");
+            System.out.println("Enviei pacotes do:"+(i+firstSeq)+" ao "+(i+firstSeq+j)+ " ("+j+" pacotes); Recebi ack de "+numRecieved +" pacotes.");
             if (numRecieved == 0 ){
                 fails ++;
                 if(fails == 3)
@@ -303,7 +295,6 @@ public class CCSocket extends Thread{
             numToSend += numRecieved;
             i = lastAckReceived - firstSeq + 1;
         }
-        startingSendNumber = numToSend;
     }
 
 
